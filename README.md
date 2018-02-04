@@ -1,0 +1,2 @@
+# WIPs
+Witnet Improvement Proposals
