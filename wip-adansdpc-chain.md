@@ -179,28 +179,28 @@ Note: `flex-n` types are defined in the [Flex encoding](#flex-encoding) section 
 
 #### Block structure
 
-| Field | Description | Size |
+| Field | Description | Type |
 |---|---|---|
 | Block size | Number of bytes following up to end of block | flex-2 |
-| Block header | The header of the block | Varies |
+| Block header | The header of the block | structure |
 | Transaction counter | Number of transactions in the block | flex-2 |
-| Transactions | A non-empty list of transactions | Varies |
+| Transactions | A non-empty list of transactions | \[structure\] |
 
 #### Block header structure
 
 | Field | Description | Size |
 |---|---|---|
 | Version | Block version number | flex-1 |
-| Beacon | A checkpoint beacon for the epoch that this block is closing | 33-36 bytes |
-| hashMerkleRoot | 256-bit hash based on all of the transactions committed to this block | 32 bytes |
-| Proof | A miner-provided proof of leadership | Varies |
+| Beacon | A checkpoint beacon for the epoch that this block is closing | structure |
+| hashMerkleRoot | 256-bit hash based on all of the transactions committed to this block | u256 integer |
+| Proof | A miner-provided proof of leadership | structure |
 
 #### Proof of leadership structure
 
 | Field | Description | Size |
 |---|---|---|
-| BlockSig | An enveloped signature of the block header except the Proof part | Varies |
-| PowerSig | An enveloped signature of the epoch beacon | Varies |
+| BlockSig | An enveloped signature of the block header except the Proof part | structure |
+| PowerSig | An enveloped signature of the epoch beacon | structure |
 | Influence | The miner influence as of last checkpoint | flex-1-shift-2 |
 
 #### Checkpoint beacon structure
@@ -208,7 +208,7 @@ Note: `flex-n` types are defined in the [Flex encoding](#flex-encoding) section 
 | Field | Description | Size |
 |---|---|---|
 | Checkpoint | The serial number for an epoch | flex-1-shift-2 |
-| hashPrevBlock | 256-bit hash of the previous block header | 32 bytes |
+| hashPrevBlock | 256-bit hash of the previous block header | u256 integer |
 
 ### Signatures
 
@@ -217,13 +217,13 @@ Note: `flex-n` types are defined in the [Flex encoding](#flex-encoding) section 
 | Field | Description | Size |
 |---|---|---|
 | CryptoSys | A cryptosystem identifier | flex-b1 |
-| Signature | A digital signature | Varies |
+| Signature | A digital signature | structure |
 
 #### Cryptosystem identifiers registry
 
 | Dec | Hex | Flex-b1 | Cryptosystem | Signature size |
 |---|---|---|---|---|
-| 0 | 0x00 | 0000 | Unsigned | 0 bytes |
+| 0 | 0x00 | 0000 | None | 0 bytes |
 | 1 | 0x01 | 0001 | ECDSA over secp256k1 | 48 bytes |
 
 Future WIPs can propose addition of new entries to this registry.
