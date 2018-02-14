@@ -173,6 +173,10 @@ To made this possible, Witnet transactions have a series of nice properties expl
 
 ## Specification
 
+### Constants
+
+- **Epoch duration**: 90 seconds.
+
 ### Blocks
 
 Note: `flex-n` types are defined in the [Flex encoding](#flex-encoding) section below.
