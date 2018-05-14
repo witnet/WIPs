@@ -204,7 +204,7 @@ When importing a serialized extended public key, implementations must verify whe
 The total number of possible extended keypairs is almost 2<sup>512</sup>, but the produced keys are only 256 bits long, and offer about half of that in terms of security. Therefore, master keys are not generated directly, but instead from a potentially short seed value.
 
 * Generate a seed byte sequence `S` of a chosen length (between 128 and 512 bits; 256 bits is advised) from a (P)RNG.
-* Calculate `I = HMAC-SHA512(Key = "Bitcoin seed", Data = S)`
+* Calculate `I = HMAC-SHA512(Key = "Witnet seed", Data = S)`
 * Split `I` into two 32-byte sequences, I<sub>L</sub> and I<sub>R</sub>.
 * Use parse<sub>256</sub>(I<sub>L</sub>) as master secret key, and I<sub>R</sub> as master chain code.
 In case I<sub>L</sub> is 0 or ≥n, the master key is invalid.
