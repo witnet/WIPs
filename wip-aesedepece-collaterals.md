@@ -1,0 +1,210 @@
+<pre>
+    WIP: WIP-aesedepece-collaterals
+    Layer: Consensus (hard fork)
+    Title: Collateralization of Witnessing Activity
+    Author: Adán SDPC <adan@witnet.foundation>
+    Discussions-To: `#dev-general` channel on Witnet Comunnity's Discord server
+    Status: Draft
+    Type: Standards Track
+    Created: 2020-03-09
+    License: BSD-2-Clause
+</pre>
+    
+## Abstract
+
+This proposal introduces an upgrade that strengthens the overall security of the Witnet protocol by means of hindering any chance for an attacker to operate an unbounded number of identities in an attempt to tamper with data requests or abusing any of the protocol shared data structures (e.g. TRS and ARS).
+
+This crucial security feature is achieved by requiring witnesses to commit a certain amount of tokens to each of their _commitment transactions_, alike to a collateral, deposit or bond that they can only recoup if they abide by the protocol and pass the filters of the eventual tally function, in a similar fashion to the existing reputation protocol.
+
+## Motivation and Rationale
+
+"Sybil resistance" refers to the ability of a protocol to endure the situation in which a single participant covertly operates multiple identities. These "Sybil attacks" tend to arise as soon as resources can be devoted to operating identities in a non-exclusive way, i.e. resources can be shared among them trivially.
+
+Open block chain protocols have traditionally solved this problem through the adoption of _Proof-of-Work (PoW)_. In a PoW system, for a participant to convince the rest of the network to accept its blocks, a cryptographic proof of having performed a costly computation needs to be provided. Given that the computation is cryptographically bound to their private keys, the CPU / GPU cycles that have been devoted by one identity to "mine" a block cannot be reused for a separate identity.
+
+A different approach that has been explored in length by many protocols is _Proof-of-Stake (PoS)_. The assumptions are somehow similar to the ones in PoW: each identity needs to commit a consumptive resource (tokens) for a certain amount of time. As those tokens are locked in escrow and cannot be moved from one identity to another (exclusiveness), the cost of operating multiple identities necessarily grows linearly with the number of identities. The main additional consideration in comparison to PoW is that some protocols may provide a "slashing" mechanism that makes attackers lose their staked tokens may someone provide cryptographic evidence of the attack.
+
+One of the fundamental design principles in the Witnet protocol is that  barriers to entry need to be kept to a minimum so the network welcomes numerous and diverse node operators, as many of the security assumptions made so far are only expected to strictly hold true in a large scale non-coordinated scenario. As a consequence, the Witnet protocol tries to move away from PoW and rather takes an approach more alike to PoS. However, instead of staking tokens, participants are required to stake their "reputation score", which is a separate digital asset that cannot be traded.
+
+Reputation scores for each identity in the Witnet network are tracked through a pair of shared data structures called _Total Reputation Set (TRS)_ and _Active Reputation Set (ARS)_. For the scope of this document, it is worth mentioning that the VRF-powered cryptographic sortition algorithm that is used for selecting block proposers (a.k.a. _RaPoE_) weights in the size of the ARS for adjusting the "mining difficulty". That is, the more nodes that are considered "active", the more unlikely they need to be to produce a block candidate.
+
+Given all of that, it is of utmost importance that the ARS is properly curated so that identities appearing in it do represent actual nodes operated by independent participants. However, the current protocol can theoretically be abused in several ways so as to degrade the "representativeness" of the ARS or try to cope it with identities that are controlled by a single node operator or a coordinated operator cartel.
+
+This proposal introduces an upgrade to the Witnet protocol that requires identities to lock some of their tokens when participating in witnessing activities, with a view to hindering hypothetical attacks geared towards tampering with the ARS by means of operating a huge amount of identities in parallel (_Sybil attack_) so as to force some of them to pass the eligibility requirements, i.e. sneaking themselves into VRF committees so that they can always propose blocks or have a say in the result of a majority of the data requests in the network. 
+
+## Specification
+
+### Unspent Transaction Outputs Set (UTXO Set)
+
+**Age of an UTXO.** Entries of the UTXO set need to be tagged with a reference to the block in which they were created so as to track how "old" are they in terms of how many blocks have been consolidated into the block chain since their creation.
+
+**Age for existing UTXOs.** Entries of the UTXO set that predate the eventual activation of this proposal must be tagged with a reference to the last block as of the last UTC midnight preceding the eventual activation of this proposal. In absence of any other block other than the _genesis block_ in the block chain, the genesis block itself must be referenced. 
+
+### Data Request Transactions
+
+**`collateral` field.** A new field in the data request output (`DataRequestOutput`) data structure, `collateral`, is defined:
+
+```protobuf
+message DataRequestOutput {
+    RADRequest data_request = 1;
+    uint64 witness_reward = 2;
+    uint32 witnesses = 3;
+    uint32 backup_witnesses = 4;
+    uint64 commit_fee = 5;
+    uint64 reveal_fee = 6;
+    uint64 tally_fee = 7;
+    uint32 extra_commit_rounds = 8;
+    uint32 extra_reveal_rounds = 9;
+    uint32 min_consensus_percentage = 10;
+    uint64 collateral = 11;
+}
+```
+
+This new `collateral`  field represents the amount of wit tokens that a witness solving the request will be required to collateralize in the commitment transaction.
+
+**Minimum value.** The minimum value for the `collateral` field is   denominated in nanowits, and set by a new consensus constant, `collateral_minimum`.
+
+**Optionality and defaults.** The `collateral` field is optional. If not provided, it is assumed to be the minimum value.
+
+**No maximum value.** There is no need for enforcing a maximum value of the `collateral` field, as it is up to the witnesses to decide whether they commit such amount or they refrain from doing so. 
+
+
+### Commitment Transactions
+
+**`inputs` and `outputs` fields.** Two new fields in the commitment transaction body (`CommitTransactionBody`) data structure, `inputs` and `outputs`, are defined:
+
+```protobuf
+message CommitTransactionBody {
+    Hash dr_pointer = 1;
+    Hash commitment = 2;
+    DataRequestEligibilityClaim proof = 3;
+    repeated Input inputs = 4;
+    repeated ValueTransferOutput outputs = 5;
+}
+```
+
+**Age of the inputs.** Inputs used in the `input` field need to be older than a certain number (`collateral_age`) of effective blocks—not simply epochs. That is, for an output to be used as input here, at least `collateral_age` blocks need to exist in the Witnet block chain building on top of the block where the output was created. The value of `collateral_age` is not set forth by this document (see the *Adoption Plan* section).
+
+**No value is created.** The aggregated value of `inputs` (total input value) needs to be greater than the aggregated value of `outputs` (total output value):
+
+    Σinput - Σoutput > 0
+    
+**Collateral value comes from input.** The difference between the total input value and the total output value (net value) needs to be greater than the `collateral` field from the data request:
+    
+    net_value = Σinput - Σoutput
+
+    Σinput - Σoutput - collateral > 0
+
+**Miner-claimable fee.** Any remaining value after substracting `collateral` from the net value is considered to be a miner-claimable fee:
+
+    miner_fee = net_value - collateral
+
+The miner-claimable fee needs still to be equal than the `commit_fee` field from the `DataRequestOutput` structure in the data request. That is, the validation logic for commitment transaction miner-claimable fees remains the same.
+
+
+### Tally transactions
+
+**`rewarded_witnesses` and `slashed_witnesses` fields.** The `rewarded_witnesses` field in the tally transaction data structure (`TallyTransaction`) is replaced by a new field, `slashed_witnesses`:
+
+```protobuf
+message TallyTransaction {
+    Hash dr_pointer = 1;
+    bytes tally = 2;
+    repeated ValueTransferOutput outputs = 3;
+    repeated PublicKeyHash slashed_witnesses = 4;
+}
+```
+
+**Rewarded identities.** In general terms, identities found in `outputs` can be considered rewarded identities. The only exception is the identity that signed the data request ("the requestor"), which must not be considered rewarded solely based in its presence in `outputs`. The requestor is only considered rewarded if in addition to being present in the `outputs` field, it is not in the `slashed_witnesses` field.
+
+**Slashed identities.** Conversely, all identities found in `slashed_witnesses` can be considered slashed, with no exception whatsoever.
+
+**Only committers are listed.** For an identity to be present in `outputs` or `slashed_witnesses`, one commitment transaction for the data request must exist in the block chain prior to the tally transaction itself, such that the commitment is signed by the same identity, with the only exception of the requestor, which can be present in `outputs` for a different reason (see *"Change output"* below).
+
+**All committers must be listed.** All identities that produced commitment transactions for a data request that exist in the block chain prior to the tally transaction itself ("committers") must be present in either one of the `outputs` or `slashed_witnessess` fields.
+
+**No identity repetition.** No identity can appear more than once in either the `output` or `slashed_identities` fields. In the same manner, no identity can be present in both the `outputs` and `slashed_identities` fields, with the only exception of the requestor, which in addition to being in one of those fields, can calso be present in (a) both at the same time OR (b) twice in `outputs` (see *"Change output"* below).
+
+**Requests with insufficient commits**. Given a data request, may not exist enough commitments for it in the `extra_commit_rounds + 1` number of blocks (as specified by the request) following the block in which it was bound to enter the commit stage, a tally can be immediately produced such that the result is the "Insufficient commits" RADON error, the `slashed_identities` field is empty, and the `outputs` field contains only the change output (see *"Change output"* below).
+
+**Missing reveals**. All committers for which no valid reveal transaction exists in the block chain prior to the tally transaction itself must be listed in the`slashed_witnessess` field. To this effect, for a reveal transaction to be considered valid, it must be properly constructed such that it can be decoded into a compliant RADON type or RADON error.
+
+**Tally evaluation.** The rules for deciding whether committers which have produced valid reveal transactions for the referred request such that they exist prior to the tally transaction itself (revealers) belong to the `output` or `slashed_identities` fields remain the same as they were before this proposal.
+
+**Change output.** Given a request such that (1) it had insufficient commits, or (2) its count of committers outnumbers that of revealers, or (3) its count of slashed identies is not zero, or (4) any combination of 1, 2 and 3, a first `ValueTransferOutput` entry (change output) must exist in `outputs` such that it is spendable by the requestor, and its value equals the total value that was expected to be used for the `commit_fee` of the missing commits, plus the total value that was expected to be used for the `reward` and `reveal_fee` of the missing reveals, plus all the value that that was expected to be used as the `reward` of the slashed identities:
+
+    change = (reward + commit_fee) * (witnesses - committers_count) +
+             (reward + reveal_fee) * (witnesses - revealers_count) +
+             reward * slashed_count
+
+**All outputs are equal in value.** All the `ValueTransferOutput`  entries in `outputs` must have the same value, with the only exception of the change output.
+
+**Value of the outputs.** The value of every each of the `ValueTransferOutput` entries in the `outputs` field—except the change output—must equal to the result of adding the `reward` and `collateral` as specified in the data request, plus the result of dividing all the collateralized value lost by the identies found in `slashed_identities` by the number of rewarded identities:
+
+    output_value = reward + collateral * (1 + slashed_count / rewarded_count)
+    
+**No value is created or destroyed.** The aggregated value of all `ValueTransferOutput` entries in `output` must equal the total value of the `DataRequestOutput` from the data request, plus the total `collateral` value, minus the value of any fees claimed by miners.
+
+    Σoutput = dro_value +
+              collateral * witnesses -
+              commit_fee * (witnesses - committers_count) -
+              reveal_fee * (witnesses - revealers_count) - 
+              tally_fee
+
+**The reputation system remains the same.** Redistribution of reputation points across identities as a consequence of positive or negative consensus in the tally transactions and the rules and constants that govern such part of the protocol remain unchanged.
+
+## Backwards Compatibility Assessment
+
+### Consensus
+
+This proposal introduces significant changes to existing data structures, validation and consensus rules.
+
+Two new consensus constant, `collateral_age` and `collateral_minimum`, are introduced in this proposal, thus altering the magic number of the protocol.
+
+Protocol sessions that predate these changes are not valid under the validations put forth in this document.
+
+Protocol sessions abiding by the data structures and validation rules put forth in this document are not valid from the perspective of any compliant protocol implementation that predates these changes.
+
+On the basis of the above, there is more than enough evidence to assert that the content of this proposal is not backwards compatible from a data structures, peering, validations and consensus perspective, and that no healthy protocol session nor cooperative chain construction would be possible among two nodes from which one adopted these changes while the other did not.
+
+As it is considered best practice in such situations, an *Adoption Plan* is hereby proposed.
+
+### Examples and Documentation
+
+The data structures affected by this proposal are internal to the block chain protocol and the peering protocol. Therefore this proposal triggers no update on existing examples or documentation.
+
+### Libraries and Clients
+
+#### Breaking changes
+
+The data structures affected by this proposal belong to the Protocol Buffers schema definition, and therefore the changes hereby proposed may break existing libraries and clients.
+
+#### Recommendations
+
+Under the assumption that the amount of tokens that a single identity can possess is not unbounded, this proposal imposes an implicit rate limitation on the amount of data requests that a single identity can process per unit of time, as tokens devoted to participating in one data request cannot be relocated into a second data request until a certain period of time has passed. 
+
+It is therefore in the best interest of participants willing to maximize their "witnessing bandwidth" to manage their UTXOs wisely so that they always have some spare UTXOs to devote to new data requests for which they may be eligible.
+
+For the convenience of those participants, it is recommended and expected that implementations of the witnessing protocol manage the UTXOs automatically, splitting or merging them when necessary so as to get enough spare UTXOs prepared for eventual data requests that may have collateral requirements of different amounts.
+
+## Reference Implementation
+
+This proposal is a draft submitted for evaluation and eventual approval from the Witnet community.
+
+No reference implementation exists or is provided. More details on this can be found in the *Adoption Plan* below.
+
+## Adoption Plan
+
+Due to the undeniable impact on consensus of this proposal, it becomes apparent that these protocol changes need to be introduced through a coordinated upgrade of the whole network.
+
+No special provision in this proposal mandates the application of distinct validation rules for transactions and blocks that predate its eventual activation. In consequence, the protocol changes proposed herein are expected to be applied on a newly bootstrapped block chain in which the updated protocol must be applied starting from the genesis block itself.
+
+With respect to the age of inputs created in the genesis block, in accordance with the *Age for existing UTXOs* section above, they will refer the genesis block itself.
+
+As provided for by [WIP-0001], for this proposal to be moved from the *Draft* to the *Proposed* stage, it needs to be updated so as to (1) introduce a reference implementation, (2) propose a value for the `collateral_age` and `collateral_minimum` consensus constants, and (3) propose a date for activation.
+
+## Acknowledgements
+
+This proposal has been cooperatively devised by many individuals from the Witnet development community.
+
+[WIP-0001]: https://github.com/witnet/WIPs/blob/master/wip-0001.md
