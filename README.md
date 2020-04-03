@@ -10,3 +10,4 @@ Having a WIP here does not make it a formally accepted standard until its status
 | Number | Layer | Title | Owner | Type | Status |
 |:------:|:-----:|:-----------:|:----------------------------:|:-------:|:--------:|
 | [1](wip-0001.md) |  | WIP process | [Adán SDPC](https://github.com/aesedepece) | Process | Accepted |
+| [2](wip-0002.md) | Consensus (hard fork) | Collateralization of Witnessing Activity | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
