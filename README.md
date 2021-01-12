@@ -12,5 +12,6 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [1](wip-0001.md) |  | WIP process | [Adán SDPC](https://github.com/aesedepece) | Process | Final |
 | [2](wip-0002.md) | Consensus (hard fork) | Collateralization of Witnessing Activity | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [3](wip-0003.md) | Consensus (hard fork) | WIT issuance schedule | [Daniele Levi](https://github.com/burguesia) | Standards Track | Final |
+| [4](wip-0004.md) | Consensus (hard fork) | BLS signature propagation and aggregation | [Gorka Irazoqui](https://github.com/girazoki) and [Claudia Bartoli](https://github.com/clbartoli) | Standards Track | Draft |
 
 [discord]: https://discord.gg/X4uurfP
