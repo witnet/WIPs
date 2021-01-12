@@ -15,5 +15,6 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [4](wip-0004.md) | Consensus (hard fork) | BLS signature propagation and aggregation | [Gorka Irazoqui](https://github.com/girazoki) and [Claudia Bartoli](https://github.com/clbartoli) | Standards Track | Draft |
 | [5](wip-0005.md) | Consensus (soft fork) | ARS merkelization | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Draft |
 | [6](wip-0006.md) | Consensus (hard fork) | Coexistence of BLS and Secp256k1 keys | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Draft |
+| [7](wip-0007.md) | Consensus (hard fork) | Block weight | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
 
 [discord]: https://discord.gg/X4uurfP
