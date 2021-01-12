@@ -1,0 +1,92 @@
+<pre>
+    WIP: WIP-adansdpc-limits_on_data_request_concurrency
+    Layer: Consensus (hard fork)
+    Title: Limits on data request concurrency
+    Author: Adán SDPC <adan@witnet.foundation>
+    Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+    Status: Draft
+    Type: Standards Track
+    Created: 2020-03-09
+    License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+This proposal introduces changes to block validations consisting in hard limits on the number of Witnet data requests that can be processed concurrently.
+
+The goal of this proposal is ensuring that Witnet nodes are not forced to process too many requests at the same time, which could be abused as a [denial-of-service attack][DoS] and pose a serious threat to availability and security of the network and any smart contracts relying on it for its oracle capabilities. 
+
+
+## Motivation and Rationale
+
+More than once in the pre-mainnet stage of the Witnet ecosystem, the Witnet testnet faced episodes of severe network disruption caused by some nodes with low computation resources getting clogged when trying to process many data requests at the same time.
+
+This situation has been milder on the Witnet mainnet, as the volume of data request transactions flooding the network is significantly lower, most probably due to their cost in Wit tokens (conversely, testnet tokens had no intrinsic value and node operators may deploy bogus data requests just for the sake of experimenting with redistribution of reputation points). 
+
+However, even if this is not a critical issue at these early ages of the ecosystem, it is to be expected that the network undergoes similar situations sooner or later either because of a potential increase on the volume of high-value data requests, or, in absence thereof, a high number of the aforementioned bogus data requests.
+
+One of the early design principles of the Witnet protocol was always that anyone could run a node on commodity, off-the-shelf hardware. The [witnet-rust] implementation of the protocol was created with this principle in mind, and it will normally perform without any issue on cheap VPSs or even on small single-board computers like the [Raspberry Pi][raspberrypi]. This is crucial for keeping the network neutral, open, and decentralized—under the assumption that a numerous crowd of amateur node operators are less likely to collude or corrupt than a few professional miners. 
+
+Although it is hard to know what the node demographics actually are in term of how many resources (CPU, RAM) do have at their disposal, the community has long applied an intuitive rule of thumb consisting in allocating at least 1 CPU or vCPU and 1GB of RAM to each Witnet node. While these requirements should be more than enough most of the time, it is not hard to imagine that nodes like that would easily be disrupted when concurrently processing dozens of data requests, as the testnet experiments proved.
+
+The block limits in [WIP-0007][wip-0007] do normally prevent too many requests from being processed at the same time. However, block reorganizations or reversal in the context of superblock consensus can easily cause several data requests to be retried at the same epoch. That is, under an episode of lack of network consensus, data requests can go from any stage (`commit`, `reveal`, `tally` or `final`) back to the initial `published` stage. This will cause all pending data requests to concurrently enter the `commit` stage in the same epoch, leading to the negative side effects explained before.
+
+The [witnet-rust] implementation of the protocol already enforces some limits to the number of data requests that are posted into a single block. However, these restrictions are only applied when producing block candidates, i.e. block proposers will refrain from including data request transactions if there are already more than a certain number of data requests in the `commit`, `reveal` or `tally` stages; but blocks that exceed those limits are still valid.
+
+There is also a hard limit to the number of retrievals that a [witnet-rust] node will perform and commit to during a single epoch. This limit was implemented back in March 2020 by [pull request #1098][pr1098], and can be adjusted by node operators through the `mining.data_request_max_retrievals_per_epoch` setting in the `witnet.toml` configuration file. Again, this limit is only enforced when mining, and existing consensus rules do not prevent blocks from exceeding such limits.
+
+From a protocol standpoint, all of these restrictions are insufficient, as there exist no block validations that restrict data request concurrency, and alternative protocol implementations may choose not to enforce the same non-consensus limits than [witnet-rust] does, i.e. blocks produced by those alternative implementations could still potentially disrupt [witnet-rust] nodes.
+
+Summing up, there is a need for adding new block validation rules that enforce a reasonable limit to data requests concurrency, so as to ensure availability of the network and allow for more consistent and predictable hardware requirements for nodes. 
+
+
+## Proposal / Specification
+
+Following entry into force of this proposal, all implementations of the Witnet protocol, at all subsequent protocol epochs, MUST add up the combined weight of all data requests in the `commit`, `reveal` or `tally` stages (_unsolved weight_); and reject every block candidate containing any further data requests whose combined weight (_extra weight_) added to the _unsolved weight_ is strictly greater than the `max_dr_weight` constant from [WIP-0007][wip-0007].  
+
+```js
+// This example is using JavaScript alike pseudocode
+
+const max_dr_weight = 80_000;
+let unsolved_weight = 0;
+let extra_weight = 0;
+
+for (pending_transaction of pending_data_request_transactions) {
+    unsolved_weight += pending_transaction.weight();
+}
+
+for (new_transaction of block_candidate_data_request_transactions) {
+    extra_weight += new_transaction.weight();
+}
+
+if (unsolved_weight + extra_weight > max_dr_weight) {
+    // reject block candidate
+} else {
+    // continue validating block candidate
+}
+```
+
+As of publication time of this proposal, `max_dr_weight` was `80000`.
+
+## Reference Implementation
+
+The business logic described in the specification was implemented in [witnet-rust] by [pull request #1790][pr1790].
+
+
+## Adoption Plan
+
+The changes proposed herein have been already implemented in [witnet-rust] and the activation of the new consensus rule is scheduled as a community-coordinated hard fork to take place on January 22, 2021 at 9am UTC, as proposed by [pull request #1790][pr1790] and [widely announced to the community][announcement] in a timely manner.
+
+## Acknowledgments
+
+This proposal has been cooperatively devised by many individuals from the Witnet development community.
+
+
+[DoS]: https://en.wikipedia.org/wiki/Denial-of-service_attack
+[witnet-rust]: https://github.com/witnet-rust
+[raspberrypi]: https://www.raspberrypi.org/
+[wip-0007]: wip-0007.md
+[pr1790]: https://github.com/witnet/witnet-rust/pull/1790
+[announcement]: https://medium.com/witnet/introducing-witnet-1-1-the-biggest-network-upgrade-so-far-ecaae6b6945e
+[pr1098]: https://github.com/witnet/witnet-rust/pull/1098
