@@ -17,5 +17,6 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [6](wip-0006.md) | Consensus (hard fork) | Coexistence of BLS and Secp256k1 keys | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
 | [7](wip-0007.md) | Consensus (hard fork) | Block weight | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
 | [8](wip-0008.md) | Consensus (hard fork) | Limits on data request concurrency | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
+| [9](wip-0009.md) | Consensus (hard fork) | Adjust mining probability | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Draft |
 
 [discord]: https://discord.gg/X4uurfP
