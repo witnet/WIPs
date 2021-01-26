@@ -25,25 +25,6 @@ after more than 3 months of the Witnet mainnet launch, the network has faced epi
 
 A thorough investigation concluded that the majority of these blocks (if not all) were produced by non-reputed and non-active nodes (i.e. newcomers to the network). Regardless of the intentionality of this behaviour, these blocks were appearing in a much higher volume than the newcomer mining probability that was designed in the protocol.
 
-The 18th of January under the following network conditions, the newcomer mining probability was:
-
-TRS(Total Reputation Set)  = 2000 nodes
-ARS(Active Reputation Set) = 6000 nodes
-RF(Replication Factor) = 3
-
-```
-P(non-reputed node mines a block) = P(none reputed node mines a block) = P(single reputed does not mine a block)^TRS = (1- P(single reputed mine a block))^TRS = (1 - RF/ARS)^TRS ~= 37%
-```
-
-In the initial mining algorithm design [rand-poe], DoS attacks were carefully taken into account. An upper bound for the probability of an attacker censoring blocks was set to approximately 2%.
-
-However, before the mainnet launch some mining parameters were changed to achieve a more fair block reward distribution. It was assummed that the reputation expiration would be slower compared to the activity period (related to the ARS). This assumption did not hold in mainnet as seen in the former example. This mistake led to a significant increase in the newcomer mining probability.
-
-Summing up, there is a need for adjusting the newcomer mining probability to mitigate the impact of potential DoS attacks that may endanger the availability and the security of the Witnet network.
-
-
-## Proposal / Specification
-
 The current mining algorithm can be summarized as follows:
 
 1. Miners build a candidate block.
@@ -54,7 +35,22 @@ Upon reception of multiple candidates, the winner will be selected as follows:
 1. Candidate blocks from reputed nodes are prioritized over those from non-reputed nodes.
 2. If there are still multiple candidates, the one with the lowest VRF is chosen.
 
-The main problem with the aforementioned algorithm is that the eligibility is computed using the ARS as census, but the prioritization is only taking into account the reputed nodes. This led to the increase of the newcomer mining probability.
+The main problem with the aforementioned algorithm is that the eligibility is computed using the ARS as census, but the prioritization is only taking into account the reputed nodes. This led to the increase of the newcomer mining probability. For example, the 18th of January the newcomer mining probability could be computed with the following network conditions:
+
+```
+TRS(Total Reputation Set)  = 2000 nodes
+ARS(Active Reputation Set) = 6000 nodes
+RF(Replication Factor) = 3
+
+P(non-reputed node mines a block) = P(none reputed node mines a block) = P(single reputed does not mine a block)^TRS = (1- P(single reputed mine a block))^TRS = (1 - RF/ARS)^TRS ~= 37%
+```
+
+In the initial mining algorithm design [rand-poe], DoS attacks were carefully taken into account. An upper bound for the probability of an attacker censoring blocks was set to approximately 2%. However, before the mainnet launch some mining parameters were changed to achieve a more fair block reward distribution. It was assummed that the reputation expiration would be slower compared to the activity period (related to the ARS). This assumption did not hold in mainnet as seen in the former example. This mistake led to a significant increase in the newcomer mining probability.
+
+Summing up, there is a need for adjusting the newcomer mining probability to mitigate the impact of potential DoS attacks that may endanger the availability and the security of the Witnet network.
+
+
+## Proposal / Specification
 
 This document proposes to use the same census for the eligibility and the prioritization as initially designed. The previous candidate selection will be modified as follows:
 
