@@ -1,0 +1,85 @@
+<pre>
+  WIP: WIP-202102-recovery
+  Title: Feb 2021 Chain Fork Post-Mortem
+  Author: The witnet-rust developers <devs@witnet.io>
+  Comments-Summary: No comments yet.
+  Comments-URI: https://github.com/bitcoin/bips/wiki/Comments:BIP-0050
+  Status: Proposed
+  Type: Informational
+  Created: 2021-02-22
+  License: PD
+</pre>
+
+## What went wrong
+
+For reasons that are yet to be investigated in full, on February 20, 2021, the superblock consensus committee size started to progressively go down until it went to the minimum of `1`.
+
+After several hours of a total lack of superblock consensus, different segments of the network consolidated different superblocks. This resulted in multiple, incompatible chain forks. The last block that was common to all of them was `#248839` with hash `47eb3069ad98b81c89bd0691f89885387d51505ed3f45ba2b0a240582bb75b0c`.
+
+At that point, at least two forks were registered:
+
+| Chain | First block number after `#248839` | First block hash after `#248839`                                   |
+| ----- | ----------------------------------:| ------------------------------------------------------------------ |
+| A     |                          `#248921` | `7556670d27c4c091a02e0b1aa87601498dfb97ba2caf0ce3252f93f4460d79c6` |
+| B     |                          `#249064` | `e254665470e312d68cfaceac34c2c6cb0493f42712cf8dae2638b3cc0afbc362` | 
+
+
+## What went right
+
+By February 22, the `A` chain above seemed healthy enough, as it presented a consistent committee size of `100`, and a low rate of rollbacks. 
+
+## Root cause
+
+The root cause for the superblock consensus disruption remains unconfirmed.
+
+The main theory is that one or more big miners stopped for whatever reason around the same time. If consensus at that point was not too strong, this would have caused a reduced count of superblock voters, leading to automatic chain rollbacks. If a sufficient percentage of nodes were not synced at the same time, it could become almost impossible for any given node to find peers that share a common chain beacon, further exacerbating not finding enough superblock voters. Moreover, as active nodes expired—bringing down mining difficulty and thereby increasing the amount of broadcasted blocks—forks at the block level would become more likely, further weakening superblock consensus and forcing the committee size to be reduced.
+
+This situation of network disruption alone would not necessarily lead to forks at the superblock consensus level. It is the fact that the committee size can go as low as 1 that actually gives rise to multiple forks, as any single superblock vote could potentially be consolidated by nodes that happen to be on the same tip of the chain as the voter.
+
+## Action items
+
+### Immediate
+
+These *immediate actions* are geared towards resuming the normal operation of the network. That is, making sure that all nodes can get a valid chain state on top of which new blocks can be appended and validated by the entire network.
+
+These actions are aimed specifically at nodes that were not able to keep up with the `A` chain above.
+
+1. Release a `witnet-rust` version, tagged as `1.1.3`, forked directly from `1.1.2`, that introduces a new `rewind` CLI command that enables a node operator to rewind their local chain all the way back to a certain epoch.
+2. Optionally, make this release preemptively soften some peering restrictions that are not consensus-critical (e.g. inbound Sybil protection, icing period, outbound peers target, etc.) to facilitate the discovery of potential peers and speed up the recovery.
+3. Release a recovery script that evaluates whether a local node is on the `A` chain, and if it not, rewinds the chain back to the pre-fork checkpoint (`248839`) using the `rewind` CLI method. This script can also let the node know about the public address of stable nodes that are known to be on the `A` chain.
+4. Bundle the recovery script into the `witnet/witnet-rust:1.1.3` and `witnet/witnet-rust:latest` docker images, and modify `migrations.sh` so the recovery script is run upon starting or restarting a container.
+
+Nodes that are not on the `A` chain SHOULD upgrade to `1.1.3` as soon as possible.
+
+Nodes that are already on the `A` chain SHOULDN'T upgrade to `1.1.3`, as upgrading would make no difference to them, and they would be reducing the set of available connections to peers that are already on the leading chain.
+
+Node operators can check whether a local node is on the `A` chain by running this one-liner:
+```sh
+docker exec witnet_node sh -c "witnet node blockchain --epoch 248839 --limit 2 2>&1 | grep -q '#248921 had digest 7556670d' && echo 'Your node seems to be OK' || echo 'Oh no! Your node is forked'"
+```
+
+This is the equivalent for nodes not using docker:
+```sh
+./witnet node blockchain --epoch 248839 --limit 2 2>&1 | grep -q '#248921 had digest 7556670d' && echo 'Your node seems to be OK' || echo 'Oh no! Your node is forked'
+```
+
+### Medium term
+
+Even if the need for these *medium term* actions is truly pressing, they have been delayed because they will require a coordinated upgrade of every single node in the network, which cannot be trivially carried out without an advance notice period of several days or weeks.
+
+With regards to preventing situations like this from happening in the future, it is advised that the community starts working urgently on a new Witnet Improvement Proposal that introduces a floor to the superblock signing committee size.
+
+May that proposal gather consensus in the community in a short time, it would be advisable that it gets adopted along [WIP-0009] in `witnet-rust` version `1.2.0`. The activation date for [WIP-0009] could be postponed from the original date (March 16, 2021) if necessary.
+
+### Long term
+
+Beyond setting a minimum superblock committee size, these are some other ideas relevant to this issue that have suggested by different community members and are probably worth being further explored and discussed sooner or later:
+
+- Existence of a reliable "rescue committee" that can kick in and have "casting vote" rights when superblock consensus is lost. Identities could be added or removed from this committee through WIPs.
+- Incentivization for single superblock voting, either in form of rewards, penalties, or both.
+- Incentivization for nodes that accept inbound connections, so as to improve the ratio between public and private nodes.
+- A more convenient mechanism for automatically importing lists of peer addresses.
+- Some method for exporting and importing chain state snapshots, as a way to instantly getting the local chain into a particular block height.
+
+
+[WIP-0009]: wip-0009.md
