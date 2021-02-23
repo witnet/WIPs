@@ -18,6 +18,6 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [7](wip-0007.md) | Consensus (hard fork) | Block weight | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
 | [8](wip-0008.md) | Consensus (hard fork) | Limits on data request concurrency | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [9](wip-0009.md) | Consensus (hard fork) | Adjust mining probability | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
-| [202102-recovery](wip-202102-recovery.md) |  | Feb 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Proposed |
+| [10](wip-0010.md) |  | Feb 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Proposed |
 
 [discord]: https://discord.gg/X4uurfP
