@@ -1,0 +1,180 @@
+<pre>
+    WIP: WIP-asdpc-superblock-voting
+    Layer: Consensus (hard fork)
+    Title: Improve consistency and availability of superblock voting protocol
+    Authors: Adán SDPC <adan@witnet.foundation>        
+    Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+    Status: Draft
+    Type: Standards Track
+    Created: 2021-04-06
+    License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+This proposal follows-up on the countermeasures of [WIP-0010] by implementing a minimum size for the superblock voting committee, so as to prevent nodes from irreversibly forking when falsely consolidating minoritarian superblocks during episodes of severe network disruption.
+
+This also proposes a new algorithm for composing randomized committees in case of lack of consensus, so as to maximize the chances for sampling a committee that is in consensus, and reducing as much as possible the time needed for the chain to resume normal operation.
+
+## Motivation and rationale
+
+### Current superblock voting protocol 
+
+#### Overview
+
+A _superblock voting protocol_ exists in Withet that samples identities from the _Active Reputation Set_ (ARS), and gives those identities the right to vote on what is the current chain tip.
+
+The messages being signed when voting are called _superblocks_, contain a cryptographic commitment to the tip of the block chain and confirm the addition of blocks to the chain just like blocks in turn do with individual transactions. 
+
+Every 10 Witnet epochs (7.5 minutes, a.k.a. _superepoch_), all nodes in the network compute whether they are eligible for voting. If they are not, they simply collect votes cast by others, and check whether their local chain tip matches the chain tip with the most votes.
+
+In case of a match, they consolidate their chain state and consider as final every block prior to that checkpoint. Conversely, in case of a mismatch, they roll their chain state back to the one they had as of the previous consolidated superblock.
+
+#### Committee size
+
+A special _lack of consensus_ case exists for the situation in which no chain tip gathers a supermajority of 2/3rds of the committee, either because the number of votes that were collected is less than 2/3rds of the size of the committee, or because there exist multiple chain tips out of which none received 2/3rds or more of the votes. In those cases, all nodes roll their chain state back to the previous consolidated superblock.
+
+May that _lack of consensus_ situation happen 5 superepochs in a row, the protocol will reduce by 5 the size of the committee of identities to be sampled from the ARS. That is, if the initial committee size was 100, it will become 95.
+
+May the _lack of consensus_ situation continue after the reduction, further committee size reductions in steps of 5 will be applied for every 5 superblocks in a row that lack consensus. This can be repeated as many times as needed, unless the committee size hits a minimum committee size.
+
+Even if the committee size gets reduced, the same 2/3rds supermajority requirement applies. E.g. in the case of a committee of 95 identities, the amount of coincident votes needs to be equal or greater than 64; and for a committee of, say, 70 identities, 47 votes are needed.
+
+Conversely, this mechanism also provides for a way to a grow the committee size back to its original size. Every time that 1 superblock is successfully consolidated, the committee size is increased by 5.
+
+As per the current protocol, the initial and maximum committee size is 100, and the minimum committee size is 1.
+
+
+#### Committee selection
+
+Selection of the identities to be part of a committee is performed deterministically over a list of all the identities in the ARS, conveniently ordered by decreasing reputation score.
+
+The aim is for each subsequent superblock to be voted by a different committee that ideally has the lesser overlap as possible with the one before, and picks identities across all the different reputation percentiles.
+
+For any given superepoch index (the integer division by ten of the epoch of the first block in the superblock), a committee is sampled from the ARS according to this business logic:
+
+1. Take the first byte of the previous superblock SHA256 hash, `sbh[0]`.
+2. Take the first byte of the SHA256 hash of the superepoch index, `sei[0]`.
+3. Add those bytes together and wrap over the ARS size to compute the position of the first selected identity, `first_position = (sbh[0] + sei[0]) % ars_size`.
+4. Calculate how many evenly spaced committees can fit in the ARS, `gap = ars_size \ committee_size` (`\` standing for integer division).
+5. Pick every identity whose position in the ARS matches the expression `(identity_position - first_position) % gap == 0`. In other words, pick the identities that occupy positions `(first_position + n * gap) % ars_size` for `n = [0, committee_size)`.
+
+### Current shortfalls of this protocol
+
+#### Need for a minimum committee size greater than 1
+
+Recent network disruption episodes as the one described in [WIP-0010] proved that having a minimum committee size of 1 makes it too easy for the network to irreversibly fork into multiple, incompatible chains that are impossible to reconcile without significant community coordination or resorting to some recovery mechanism that trades off decentralization for the sake of availability.
+
+
+#### Asymmetry of committee size reduction and increasal
+
+Incidentally, as the current minimum committe size (1) is not a multiple of the committee reducion and increasal step size (5), may the committee size ever hit the minimum and then grow back to higher sizes, the way up will follow a different progression than when descending (1, 6, 11, 16, ... vs. ..., 15, 10, 5, 1), because it will only descend by 4 when going from 5 to 1, thus causing the offset. The same happens when the committee size first comes near to 100 after ever hitting 1, as the last step will go from 96 to 100.
+
+
+#### Poor randomness of the committees
+
+While it is true that the current committee selection algorithm outputs different committees for each different superepoch, and ensures that the committee varies also in case of lack of consensus, there are multiple concerns about its fairness and randomness.
+
+[Issue 1467] in witnet-rust tracks a known design flaw of this mechanism whereby the probability for any two given positions in the ARS to be selected in a committee are not necessarily equal because the addition of two random bytes being performed does not output a uniform but normal distribution. This effect is aggravated by [modulo bias] when wrapping the identities selection over the ARS size.
+
+Additionaly, the way in which the modulo operator is currently applied onto the addition of `sbh[0]` and `sbi[0]` can also have a negative effect on the likelihood of coming up with a valid signing committee. In the context of a long _lack of consensus_ episode in which many superepochs in a row achieve no consensus, `sbh[0]` will remain unchanged, and subsequent values of `sbi[0]` will simply cause the selected positions from the ARS to be shifted by 1, but never shuffled. After `gap` superepochs without consensus, the committees will start to repeat, and with all likelihood, they will be unable to achieve consensus just as  they were at first try.
+
+## Specification
+
+#### Set the minimum committee size to 50
+
+- A minimum superblock voting committee size of 50 identities is proposed.
+- The maximum superblock voting committee size remains at 100 identities.
+- The reduction and increasal step size remains at 5 identities.
+
+This minimum should vastly reduce the chances for multiple superblocks to be consolidated at once in case of network partition, while still giving the protocol adaptability to situations in which a significant part of the ARS members may accidentaly or purposefully fail to vote.
+
+These are the expected probabilities and average times to consensus in the scenario in which a certain percentage of the ARS members fails to vote, before and after reducing the committee from 100 to 50:
+
+| Failure rate | Prob. @ 100 | Avg. time @ 100 | Prob. @ 50 | Avg. time @ 50 |
+|:------------ |:----------- |:--------------- |:---------- |:-------------- |
+| &lt;20%      | ~1          | 7m 30s          | ~1         | 7m 30s         |
+| 25%          | 0.98357     | 7m 37s          | 0.94488    | 7m 56s         |
+| 30%          | 0.83714     | 8m 57s          | 0.78219    | 9m 35s         |
+| 35%          | 0.46243     | 16m 13s         | 0.50597    | 14m 49s        |
+| 40%          | 0.13034     | 57m 32s         | 0.23688    | 31m 40s        |
+| 45%          | 0.01663     | 7h 30m          | 0.07653    | 1h 38m         |
+| 50%          | 0.00089     | 5d 20h 27m      | 0.01642    | 7h 37m         |
+| 55%          | 0.00002     | 260d 10h        | 0.00224    | 2d 7h 48m      |
+
+<sub>As seen above, this change makes a huge difference when it comes to average time to consensus under severe disruption situations in which more than 1/3rd of the ARS members stopped voting at once. E.g. in the fatal event of 50% of the ARS members failing to vote, the time that it takes for the chain to be resumed is reduced from nearly 6 days down to less than 8 hours.</sub>
+
+#### Simmetric reduction and increasal of committee size
+
+As the proposed superblock voting committee size (50) is a multiple of the reduction and increasal step size (5) the unintended and inconvenient asymmetry explained above simply disappears.
+
+As a result, the possible committee sizes will exclusively be 100, 95, 90, 85, 80, 75, 70, 65, 60, 55, and 50.
+
+#### Improved randomness of the committees
+
+A new algorithm is proposed for selecting the identities that will conform each superblock voting committee.
+
+The aim of this improvement is to get rid of the poor randomness and fairness of the committees as explained above and to ensure that in the event of a long _lack of consensus_ episode, new randomly sampled committees can be tried all the time, with the only limit of how many different samples of a certain size you can form out of the existing ARS.
+
+The proposed algorithm goes as follows:
+
+1. Take the previous superblock SHA256 hash as an array of 32 bytes, `sbh`.
+2. Serialize the superepoch index in big endian (MSB first) into an array of 32 bytes, `sei`.
+3. Compute 32 pseudorandom bytes as `prb = SHA256(sbh | sei)`, (`|` standing for concatenation).
+4. Wrap the 256-bit big endian unsigned integer value of the pseudorandom bytes over the ARS size to find the position of the first selected identity, `first_position = prb % ars`.
+5. Calculate how many evenly spaced committees can fit in the ARS, `gap = ars_size \ committee_size` (`\` standing for integer division).
+5. Pick the identities that occupy positions `(first_position + n * gap + (prb[n % 32] % gap)) % ars_size` for `n = [0, committee_size)`.
+
+## Backwards compatibility
+
+### Consensus
+
+#### Definitions
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement or adopt the protocol improvements proposed in this document.
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers.
+- Implementers MUST apply the proposed logic when evaluating superblock consensus.
+
+As a result:
+
+- Non-implementers MUST get their valid blocks accepted and included into superblocks by implementers.
+- Implementers MUST get their valid blocks accepted by non-implementers, but they MAY NOT included into superblocks by non-implementers.
+- Non-implementers MAY consolidate different superblocks and blocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+### Libraries, clients and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing the superblock voting protocol.
+
+Libraries, clients, interfaces, APIs, or any other software or hardware that do not implement or validate the superblock voting protocol will remain unaffected.
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvements can be found as an [integration branch in the witnet-rust repository][2nd-hf]. 
+
+## Adoption Plan
+
+An adoption plan will be proposed upon moving this document from the _Draft_ stage to the _Proposed_ stage.
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+Special thanks to [Luis Rubio][lrubiorod] and [Tomasz Polaczyk][tmpolaczyk] for the reference implementation in Rust.
+
+
+[WIP-0010]: /wip-0010.md
+[Issue 1467]: https://github.com/witnet/witnet-rust/issues/1467
+[modulo bias]: https://research.kudelskisecurity.com/2020/07/28/the-definitive-guide-to-modulo-bias-and-how-to-avoid-it/
+[2nd-hf]: https://github.com/witnet/witnet-rust/tree/second_hard_fork
+[lrubiorod]: https://github.com/lrubiorod
+[tmpolaczyk]: https://github.com/tmpolaczyk
