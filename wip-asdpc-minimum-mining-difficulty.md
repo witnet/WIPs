@@ -1,0 +1,112 @@
+<pre>
+    WIP: WIP-asdpc-minimum-mining-difficulty
+    Layer: Consensus (hard fork)
+    Title: Set minimum mining difficulty 
+    Authors: Adán SDPC <adan@witnet.foundation>
+    Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+    Status: Draft
+    Type: Standards Track
+    Created: 2021-04-08
+    License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+This proposal introduces a lower bound on mining difficulty so that in case that the Active Reputation Set (ARS) goes to abnormally low sizes, mining is not taken over by the few identities therein, given the priority that their block candidates are given by [WIP-0009].
+
+## Motivation and rationale
+
+The Witnet protocol contains a series of rules that enable nodes to evaluate block candidates and deterministically and independently decide which one to consolidate (append to the chain) without any need for voting or coordination with other nodes.
+
+By design, these rules prioritized block candidates coming from identities whose reliability has been recently proven. This reliability is vetted by their presence in the Active Reputation Set (ARS). When comparing two block candidates, if one was created by an identity in the ARS, and the other does not, the one coming from the ARS member is always preferred.
+
+In other words, for a block candidate coming from an identity not in the ARS to be consolidated by the network, it is necessary that no other block candidates were created by identities in the ARS.
+
+[WIP-0009] adjusted these rules to achieve a fairer distribution of mining rewards. By letting around 5% of the epochs not have any identity in the ARS be eligible for proposing block candidates, identities outside the ARS still have a chance to have their block candidates consolidated into the chain, which makes them join the ARS.
+
+There is however one downside to [WIP-0009]. In a scenario of severe chain rollback like the one described in [WIP-0011], the ARS may shrink abnormally, and block rewards may get concentrated into so few identities that it could become certainly impossible for any identity outside of the ARS to ever become eligible again. This happens specifically because mining eligibility is calculated as the inverse of the ARS size multiplied by a constant "replication factor", `rp`. For ARS sizes equal or smaller than `1 / rp`, all ARS members are given a mining probability of 100%, thus ruling out any chance for non-members.
+
+It therefore becomes clear that an upper bound must be enforced on mining eligibility, which actually translates to enforcing a lower bound on mining difficulty.
+
+
+## Specification
+
+### Introduce a minimum mining difficulty
+
+**(1)**: A lower bound on mining difficulty is proposed. For all epochs following the activation of this proposal, eligibility MUST be computed using the greater of two values: the ARS size and a constant `minimum_difficulty`:
+
+```rust
+let eligibility = 1 / max(ars_size, minimum_difficulty) * rf
+```
+
+
+### Equate the minimum difficulty to the initial difficulty
+
+As can be deduced from the description above, for such lower bound to be effective, its value needs to be strictly greater than `rp`, as otherwise the "no chance for non-members" side effect is not mitigated because ARS members can still have an eligibility equal or greater than 100%.
+
+The Witnet protocol provides for a consensus constant called `initial_difficulty`. This constant tells what the difficulty is as of the genesis block, so as to compute difficulty and eligibility while the ARS is totally empty in the early hours of the chain (specifically). The Witnet mainnet uses a value of 2000 as its `initial_difficulty`.
+
+**(2)**: A value of 2000 (two thousands) is set for `minimum_difficulty` so that it equals `initial_difficulty`.
+
+### Repurpose the `initial_difficulty` consensus constant as `minimum_difficulty`
+
+Consensus constants are protocol-wide constants that, in addition to their normal usage, are used by nodes to compute a "magic number" that provides isolation between peers in different Witnet networks (mainnet vs. testnet) as well as resistance to [replay attacks].
+
+Adding, removing, or changing the value of a consensus constant causes the magic number to change, resulting into a totally new Witnet network. New consensus constants must therefore be avoided always posssible, as changing the magic number for a live network would require significant coordination while transitioning from the old magic number to the new one (and probably both should be accepted for a while).
+
+As `initial_difficulty` and `minimum_difficulty` will both have a value of 2000, there is no need for both to exist independently as consensus constants, provided that there is no point in changing `initial_difficulty` for the Witnet mainnet, as the period for which the initial difficulty was applied was over shortly after genesis.
+
+**(3)**: The `initial_difficulty` consensus constant changes its name and purpose to `minimum_difficulty`, while keeping its current value of 2000 (two thousands).
+
+As a consequence of `initial_difficulty` being replaced by `minimum_difficulty`:
+
+**(4)**: When validating blocks for the first 2000 epochs after the genesis block (epochs `[1, 2000]`), difficulty MUST be computed as `1 / minimum_difficulty`.
+
+## Backwards compatibility
+
+#### Definitions
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement or adopt the protocol improvements proposed in this document.
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when evaluating block candidates or computing their own mining eligibility.
+
+As a result:
+
+- Non-implementers MAY NOT get their valid blocks accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+### Libraries, clients and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing the core Witnet block chain protocol, specially the block candidate prioritization rules and the algorithm for computing mining difficulty and eligibility.
+
+Libraries, clients, interfaces, APIs, or any other software or hardware that do not implement or apply block candidate prioritizion or the algorithm for computing mining difficulty and eligibility will remain unaffected.
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvements can be found as an [integration branch in the witnet-rust repository][2nd-hf].
+
+## Adoption Plan
+
+An adoption plan will be proposed upon moving this document from the _Draft_ stage to the _Proposed_ stage.
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+Special thanks to [Luis Rubio][lrubiorod] and [Tomasz Polaczyk][tmpolaczyk] for the reference implementation in Rust.
+
+[WIP-0009]: /wip-0009.md
+[WIP-0011]: /wip-0011.md
+[replay attacks]: https://academy.bit2me.com/en/what-is-a-replay-attack
+[2nd-hf]: https://github.com/witnet/witnet-rust/tree/second_hard_fork
