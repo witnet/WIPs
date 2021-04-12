@@ -19,7 +19,7 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [8](wip-0008.md) | Consensus (hard fork) | Limits on data request concurrency | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [9](wip-0009.md) | Consensus (hard fork) | Adjust mining probability | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
 | [10](wip-0010.md) |  | Feb 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Proposed |
-| [11](wip-0011.md) | Consensus (hard fork) | Improve consistency and availability of superblock voting protocol | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
-| [12](wip-0012.md) | Consensus (hard fork) | Set minimum mining difficulty  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
+| [11](wip-0011.md) | Consensus (hard fork) | Improve consistency and availability of superblock voting protocol | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
+| [12](wip-0012.md) | Consensus (hard fork) | Set minimum mining difficulty  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
 
 [discord]: https://discord.gg/X4uurfP
