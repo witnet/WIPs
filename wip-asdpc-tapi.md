@@ -1,0 +1,190 @@
+<pre>
+  WIP: WIP-asdpc-tapi
+  Layer: Consensus (Hard-Fork)
+  Title: Threshold Activation of Protocol Improvements
+  Authors: Adán SDPC <adan@witnet.foundation>
+  Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track + Process
+  Created: 2020-05-11
+  License: BSD-2-Clause
+</pre>
+
+## Abstract
+
+A mechanism is proposed for enabling risk-mitigated protocol upgrades by allowing block producers to signal support for specific protocol improvements, so that activation of those can automatically happen right after a supermajority of the network has signaled support for those rules for a certain period of time.
+
+The [WIP process][WIP-0001] is also revised to take into account automated activation of protocol improvements.
+
+## Motivation and rationale
+
+> **Disclaimer**: This proposal focuses strictly on the technical and procedural aspects of activating protocol improvements. Any governance aspects are not discussed herein. All uses of *"support for"* or any similar expressions are not referring to social acceptance or approval of protocol improvement proposals or WIPs but rather to whether the software actually includes code that implements a set of protocol rules, and is ready to enforce those rules.
+
+Activation of protocol improvements is never a trivial matter in any public and decentralized blockchain network. Beyond the politics of gathering social consensus around a protocol improvement proposal and coordinating all the actors involved in the operation of the network (miners, users, developers, exchanges, etc.), there are also technical challenges that need to be addressed for conducting the upgrade with no major risk to the stability and security of the network.
+
+These technical challenges and risks are naturally different for each specific blockchain protocol. In the case of Witnet, as finality and liveness are highly reliant on the outcome of each subsequent superblock voting round, new protocol rules must enter into force only once a supermajority of nodes in the network are upgraded to the new version. Otherwise, chances are that the network ends up in a "halt" situation in which the needed 2/3rds consensus is almost impossible to reach.
+
+A clear example of an unintended network halt during a coordinated upgrade is the  activation of [WIP-0009], [WIP-0011] and [WIP-0012] on 28 April 2021. Despite these WIPs receiving overall positive comments and no major objections from the community, by the time they were expected to enter into force, only some 45% of the network had upgraded to the `1.2.x` version of [witnet-rust]. This caused the network to split in two, with both sides of the split being unable to achieve the 2/3rds consensus required for resuming block consolidation. Only after 50 hours the percentage of upgraded nodes had grown closer to 2/3rds, a superblock was eventually consolidated by the supermajority chain, a fresh new *Active Reputation Set (ARS)* emerged, and consensus continued as usual, with over 90% average convergence and no single chain rollback ever since.
+
+Even though automatic network halts effectively prevent any nodes from ending up irreversibly forked, it becomes evident that protocol improvements could be activated in a much safer way if support for them is explicitly signaled, and the new protocol rules only come into force once the network has shown widespread support for them over a period of time, so that all nodes start enforcing the new protocol rules at once, with zero downtime.
+
+This document addresses:
+- means for mining nodes to signal support for new sets of protocol rules,
+- a mechanism for activating those rules may those nodes eventually signal an overwhelming support for them,
+- changes to the [WIP Process][WIP-0001] so as to rule the interactions between WIP authors and editors in the context of automated activation of protocol improvements.
+
+## Specification
+
+> For the meaning of "support" in the context of this document, please read the disclaimer in the motivation section.
+
+### Signaling support for protocol improvements
+
+**(1)** The unused `version` field in the block header data structure is repurposed for containing the support signals, and renamed as `signals`.
+
+**(2)** Each of the 32 bits of the `signals` field is "flagging" support or lack thereof for a different protocol improvement, alike to a [bit field] formed by 32 individual *signaling bits*. In other words, the binary value of the bit at position `n` represents an `n + 1`th protocol improvement, where value `1` means *"the protocol improvement is supported"* and value `0` means *"the protocol improvement is not yet supported"*.
+
+As an example, the binary string `0b10000000000000000000000000000101` is encoding support for the first, third, and thirty-second protocol improvements (signaling bits `0`, `2` and `31`), and lack of support for any other.
+
+Checking whether the `n`th protocol improvement is supported can be efficiently computed by performing a couple of bitwise operations:
+
+```python=
+nth_is_supported = (signals & (1 << (n - 1))) != 0
+```
+
+**(3)** The default value of `signals` is `0b00000000000000000000000000000000`. This default value implicitly signals support for all the features existing in the protocol before the adoption of this proposal. The `1.2.1` release of [witnet-rust] acts as a reference  what these implicit features are.
+
+Assignment of each signaling bit position to specific protocol improvements is discussed later in *[Changes to WIP Process](#Changes-to-WIP-Process)*.
+
+**(4)** Protocol clients implementing the logic of a protocol improvement that is to be activated through the procedure described in this document MUST guard the new piece(s) of logic behind a verification that prevents that code from executing before the protocol improvement is considered *active* as per (12).
+
+### Keeping track of support for protocol improvements
+
+**(5)** Upon consolidating a block into the chain (by means of superblock confirmation), each node MUST take note of the protocol improvements that the block is signaling support for. Nodes MUST accumulate those signals as counters, and every time a block is consolidated such that it signals support for one or more protocol improvements, the counters representing those protocol improvements MUST be increased by 1.
+
+As an example, here is Python pseudocode for accumulating the count of votes for each specific improvement bit:
+```python=
+signals = block.signals
+
+for n in range(0, 31):
+    signal_counters[n] += signals & 1
+    signals <<= 1
+```
+
+**(6)** Nodes that are synchronizing the chain through inventory requests MUST follow the same procedure as described in (5), with the only difference that they can increase the signal counters as soon as they write the validated blocks into their storage and local chain state, with no need to wait for superblock confirmation.
+
+**(7)** A new `signaling_period_epochs` protocol-level consensus constant is introduced, such that it:
+
+1. is not taken into account for computing the protocol version (a.k.a. *"magic number"*),
+2. is always expressed in protocol epochs, and
+3. is set to `26_880` (twenty-six thousand, eight hundred and eighty epochs), equivalent to 14 days.
+
+**(8)** All signal counters from (5) must be reset to zero upon entering protocol epochs multiple of `signaling_period_epochs`.
+
+This periodic reset at specific protocol epoch heights effectively creates *"signaling time frames"* that always start on epochs that are multiple of `signaling_period_epochs`, and finish one epoch before the next multiple of `signaling_period_epochs`.
+
+As an example, here is Python pseudocode for resetting the counters upon changing epochs:
+
+```python=
+# This need to be executed as soon as the protocol changes epochs
+if not current_epoch % signaling_period_epochs:
+    signal_counters.clear()
+```
+
+### Eventual activation of a protocol improvement that is supported enough
+
+**(9)** A new `signaling_threshold_percentage` protocol-level consensus constant is introduced, such that it:
+
+1. is not taken into account for computing the protocol version (a.k.a. *"magic number"*),
+2. is always expressed in integer percentages, and
+3. is set to `80` (eighty), meaning 80% (eighty percent).
+
+**(10)** A protocol improvement is considered *"supported enough"* as soon as more than `signaling_period_epoch * signaling_threshold_percentage / 100` blocks signaled support for it over a period of `signaling_period_epoch` epochs starting with any epoch multiple of `signaling_period_epoch`, as in (8).
+
+In other words, an improvement proposal is supported enough when its corresponding signals counter equals or exceeds `signaling_period_epoch * signaling_threshold_percentage / 100`.
+
+For the inital values of `signaling_period_epoch` and `signaling_threshold_percentage` set in (7.3) and (9.3), the number of supporting blocks required to activate a protocol improvement is `21_504` (twenty-one thousand, five hundred and four).
+
+**(11)** Once a protocol improvement is considered *supported enough*, activation is irrevocable.
+
+**(12)** A protocol improvement is active and enters into force starting with the 20th epoch after the last epoch of the first signaling time frame in which it achieved the *supported enough* status.
+
+This delay of 20 epochs equates to waiting for finality / superblock confirmation so as to prevent different nodes in the network from taking different activation decisions in the case that a protocol improvement is supported by little below or over the threshold, and a fork at the block chain level happens.
+
+**(13)** Once a protocol improvement is activated through this procedure, it will remain active for all the following protocol epochs, regardless of whether the improvement lacks enough support in any of the subsequent signaling time frames.
+
+**(14)** Protocol clients which implement the logic of a protocol improvement MUST start enforcing that logic as soon as it becomes active.
+
+**(15)** Protocol clients which introduced guards as per (4) SHOULD remove and SHOULD NOT have those guards in any further releases happening later than the activation epoch.
+
+**(16)** Once a protocol improvement is activated through this procedure, the set of protocol rules that it introduces become part of the core Witnet protocol. Consequently, protocol clients that implement the logic of a protocol improvement for the first time after the improvement has become active as per (12) MUST NOT put the logic of the protocol improvement behind any guard, i.e. they are exempt from (4).
+
+### Changes to WIP Process
+
+**(17)** As a rule of thumb, all future WIPs in the *Consensus* layer as defined by [WIP-0001] SHOULD be signaled for support and eventually activated as provided for by this document.
+
+**(18)** For a *Consensus* layer WIP to be promoted from *Draft* to *Proposed* state, its *Adoption Plan* section MUST explicitly propose activation through the process described in this document.
+
+**(19)** When promoting a *Consensus* layer WIP from *Draft* to *Proposed* state, the WIP editor MUST assign a signaling bit position to the protocol improvements proposed in the WIP under consideration. When assigning signaling bit positions, the following rules MUST be abided by:
+
+1. Bit positions MUST be assigned in increasing order, e.g. first bit 0, then bit 1, etc.
+2. Each WIP SHOULD be signaled by a single bit position.
+3. The protocol improvements proposed by a single WIP cannot be split into multiple bit positions.
+4. Exceptionally, multiple WIPs MAY use the same bit position and eventually become active at once, provided that the following requirements are met:
+    1. The two or more WIPs to be jointly signaled and activated MUST be in the *Draft* state.
+    2. The two or more WIPs MUST explicitly propose joint activation in their *Adoption Plan*.
+    3. The champions of the two or more WIPs MUST jointly ask the WIP editor for using the same bit position.
+5. Once all positions have been assigned, the next WIP that requires a position MUST be assigned position 0. Any subsequent assignments will follow Rule (19.1).
+6. All position assignments MUST be publicly listed in the README file of the WIP repository, and it is the WIP editor's responsibility to maintain that list up to date.
+
+**(20)** Notwithstanding (17) and (18), activation through any other means is still possible in the event that such other process offers better guarantees or the community simply deems it appropriate. If that is the case, the *Adoption Plan* MUST explicitly opt-out of the process described in this document, and explain in detail how the other process will work.
+
+**(21)** WIPs that propose protocol improvements by means of the mechanism described in this document are considered Final as soon as the protocol improvements proposed therein become active as per (12).
+
+## Backwards compatibility
+
+### Definitions
+
+- Implementer: a client that implements or adopts the mechanism proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement or adopt the mechanism proposed in this document.
+
+### Consensus cheat sheet
+
+Immediately upon entry into force of the proposed mechanism:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers, that is, the new rules.
+- Non-implementers SHOULD get their valid blocks accepted by implementers.
+- Implementers SHOULD get their valid blocks accepted by non-implementers.
+
+However, after a first protocol improvement is accepted:
+- Non-implementers MAY NOT get their valid blocks accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+### Libraries, clients and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing the core Witnet block chain protocol, especially block production and consolidation.
+
+Protocol clients MAY allow end users to explicitly oppose a protocol improvement by providing configuration options for setting the corresponding signaling bit to `0`.
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvements can be found as an [integration branch in the witnet-rust repository][tapi].
+
+## Adoption Plan
+
+An adoption plan is in the making.
+
+## Acknowledgments
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+[WIP-0001]: https://github.com/witnet/WIPs/blob/master/wip-0001.md
+[WIP-0009]: https://github.com/witnet/WIPs/blob/master/wip-0009.md
+[WIP-0011]: https://github.com/witnet/WIPs/blob/master/wip-0011.md
+[WIP-0012]: https://github.com/witnet/WIPs/blob/master/wip-0012.md
+[witnet-rust]: https://github.com/witnet/witnet-rust
+[bit field]: https://en.wikipedia.org/wiki/Bit_field
+[tapi]: https://github.com/witnet/witnet-rust/tree/tapi
