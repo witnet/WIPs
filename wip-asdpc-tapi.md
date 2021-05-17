@@ -48,7 +48,7 @@ As an example, the binary string `0b10000000000000000000000000000101` is encodin
 Checking whether the `n`th protocol improvement is supported can be efficiently computed by performing a couple of bitwise operations:
 
 ```python=
-nth_is_supported = (signals & (1 << (n - 1))) != 0
+let nth_is_supported = (signals & (1 << (n - 1))) != 0
 ```
 
 **(3)** The default value of `signals` is `0b00000000000000000000000000000000`. This default value implicitly signals support for all the features existing in the protocol before the adoption of this proposal. The `1.2.1` release of [witnet-rust] acts as a reference  what these implicit features are.
@@ -61,13 +61,14 @@ Assignment of each signaling bit position to specific protocol improvements is d
 
 **(5)** Upon consolidating a block into the chain (by means of superblock confirmation), each node MUST take note of the protocol improvements that the block is signaling support for. Nodes MUST accumulate those signals as counters, and every time a block is consolidated such that it signals support for one or more protocol improvements, the counters representing those protocol improvements MUST be increased by 1.
 
-As an example, here is Python pseudocode for accumulating the count of votes for each specific improvement bit:
-```python=
-signals = block.signals
+As an example, here is JavaScript pseudocode for accumulating the count of votes for each specific improvement bit:
+```javascript=
+let signals = block.signals
 
-for n in range(0, 31):
-    signal_counters[n] += signals & 1
-    signals <<= 1
+for (let n = 0; n < 32; n++) {
+  signal_counters[n] = (signal_counters[n] || 0) + signals & 1
+  signals >>= 1
+}
 ```
 
 **(6)** Nodes that are synchronizing the chain through inventory requests MUST follow the same procedure as described in (5), with the only difference that they can increase the signal counters as soon as they write the validated blocks into their storage and local chain state, with no need to wait for superblock confirmation.
@@ -82,12 +83,13 @@ for n in range(0, 31):
 
 This periodic reset at specific protocol epoch heights effectively creates *"signaling time frames"* that always start on epochs that are multiple of `signaling_period_epochs`, and finish one epoch before the next multiple of `signaling_period_epochs`.
 
-As an example, here is Python pseudocode for resetting the counters upon changing epochs:
+As an example, here is JavaScript pseudocode for resetting the counters upon changing epochs:
 
-```python=
+```javascript=
 # This need to be executed as soon as the protocol changes epochs
-if not current_epoch % signaling_period_epochs:
-    signal_counters.clear()
+if (current_epoch % signaling_period_epochs === 0) {
+    signal_counters = {}
+}
 ```
 
 ### Eventual activation of a protocol improvement that is supported enough
