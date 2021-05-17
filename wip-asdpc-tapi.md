@@ -51,7 +51,7 @@ Checking whether the `n`th protocol improvement is supported can be efficiently 
 let nth_is_supported = (signals & (1 << (n - 1))) != 0
 ```
 
-**(3)** The default value of `signals` is `0b00000000000000000000000000000000`. This default value implicitly signals support for all the features existing in the protocol before the adoption of this proposal. The `1.2.1` release of [witnet-rust] acts as a reference  what these implicit features are.
+**(3)** The default value of `signals` is `0b00000000000000000000000000000001`. This default value implicitly signals support for all the features existing in the protocol before the adoption of this proposal. The `1.2.1` release of [witnet-rust] acts as a reference  what these implicit features are.
 
 Assignment of each signaling bit position to specific protocol improvements is discussed later in *[Changes to WIP Process](#Changes-to-WIP-Process)*.
 
