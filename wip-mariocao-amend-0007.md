@@ -1,0 +1,106 @@
+<pre>
+  WIP: WIP-mariocao-amend-0007
+  Layer: Consensus (hard fork)
+  Title: Amendment to WIP-0007
+  Authors: Mario Cao <mario@witnet.foundation>
+  Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track
+  Created: 2020-06-14
+  License: BSD-2-Clause
+</pre>
+
+## Abstract
+
+This proposal aims to amend the data request weight specification (described in the WIP-0007) to match the current implementation in `witnet-rust`.
+
+
+## Motivation and rationale
+
+The implementation of the data request transaction weight formula, included in the pull request [witnet-rust#1301], differed from what was previously specified in the [WIP-0007].
+
+The transaction weight formulae are considered consensus critical as they are also used to determine if a block is valid by checking if the aggregated transaction weights exceed or not a certain value, known as bucket size. Therefore, to guarantee interoperability with other Witnet nodes, it is paramount that the specification from the [WIP-0007] and the `witnet-rust` reference implementation should be the same.
+
+
+### Current reference implementation vs. specification
+
+The reference implementation in `witnet-rust` differed from the specification of the [WIP-0007] because it is applying the factor `alpha` to all the components of the formula as:
+
+```
+DR_weight = DR_OUTPUT_size*alpha + W*COMMIT + W*REVEAL*beta + TALLY*beta + W*OUTPUT_SIZE + (N*INPUT_SIZE + M*OUTPUT_SIZE)*alpha
+```
+
+However, the [WIP-0007] defines the data request weight as:
+
+```
+DR_weight = DR_size*alpha + W*COMMIT + W*REVEAL*beta + TALLY*beta + W*OUTPUT_SIZE
+```
+
+The main differences between both equations are:
+ 1. the [WIP-0007] is heavily subsidizing "join transactions" by neglecting the size of the transaction input components.
+ 2. the [WIP-0007] neglects `OUTPUT_SIZE` components as they have fixed sized (i.e. data requests can only have 0 or 1 output components).
+ 3. the `witnet-rust` reference implementation was wrongly using the factor `alpha`, which currently is harmless because `alpha=1`.
+ 4. the `witnet-rust` reference implementation takes into account the sizes of the input and output components.
+
+
+The heavy subsidy towards join transactions poses, however, an availability threat that may affect the network stability. It also enables [Denial-of-Service (DoS) attacks][DoS] because malicious users may create large data requests with many input components to create large blocks that cannot be propagated fast enough within an epoch (45 seconds).
+
+
+## Specification
+
+This document proposes to update the data request weight definition as:
+
+```
+DR_weight = DR_OUTPUT_size*alpha + W*COMMIT + W*REVEAL*beta + TALLY*beta + (W+M)*OUTPUT_SIZE + N*INPUT_SIZE
+```
+
+The underlying reasons for the update are:
+
+ - It does not affect the current `witnet-rust` implementation as `alpha=1`.
+ - The updated formula takes into consideration the input and output components, thus reducing the attack surface, especially against [DoS].
+
+
+### Amend WIP-0007 to match the reference implementation
+
+**(1)** Update the data request weight definition in [WIP-0007] above specified.
+
+
+### Update `witnet-rust` reference implementation logic
+
+**(2)** Update the `witnet-rust` implementation by removing the factor `alpha` from the last element of the sum (i.e. `(N*INPUT_SIZE + M*OUTPUT_SIZE)`).
+
+
+## Backwards compatibility
+
+
+### Consensus
+
+This proposal introduces an update in the data request weight computation, which can be considered a consensus critical change. However, due to the use of a factor equalized to the unit, the values extracted by applying the previous and the updated formula will be the same.
+
+Therefore, there is enough evidence to assert that for the currently used parameters, this amendment can be considered backward compatible with nodes running the `witnet-rust` reference implementation.
+
+
+### Libraries and Clients
+
+Known libraries and clients are based on the `witnet-rust` reference implementation and, therefore, this amendment should not affect them.
+
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvement can be found as a [pull request in the
+witnet-rust repository][witnet-rust#1966].
+
+
+## Adoption Plan
+
+An adoption plan is not needed.
+
+
+## Acknowledgments
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+[DoS]: https://en.wikipedia.org/wiki/Denial-of-service_attack
+[WIP-0007]: https://github.com/witnet/WIPs/blob/master/wip-0007.md
+[witnet-rust#1301]: https://github.com/witnet/witnet-rust/pull/1301
+[witnet-rust#1966]: https://github.com/witnet/witnet-rust/pull/1966
