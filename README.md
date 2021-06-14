@@ -23,6 +23,6 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [12](wip-0012.md) | Consensus (hard fork) | Set minimum mining difficulty  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [13](wip-0013.md) |  | Apr 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
 | [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
-| [15](wip-mariocao-amend-0007.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Draft |
+| [15](wip-0015.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Draft |
 
 [discord]: https://discord.gg/X4uurfP
