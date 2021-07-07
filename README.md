@@ -33,7 +33,7 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 
 | Bit position | WIP(s)                               | First signaling epoch | State       |
 |:------------:|:------------------------------------:|:---------------------:|:-----------:|
-| 1            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `Signaling` |
+| 0            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `Signaling` |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
