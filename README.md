@@ -24,16 +24,16 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [13](wip-0013.md) |  | Apr 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
 | [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
 | [15](wip-0015.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Draft |
+| [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Proposed |
 
 ## TAPI signals
 
 These are the bits currently being used for signaling support for and activating Witnet Improvement Proposals through
 the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improvements (TAPI)_.
 
-| Bit position | WIP(s)            | First signaling epoch | State       |
-|:------------:|:-----------------:|:---------------------:|:-----------:|
-| 1            | [14](wip-0014.md) | `522240`              | `Signaling` |
+| Bit position | WIP(s)                               | First signaling epoch | State       |
+|:------------:|:------------------------------------:|:---------------------:|:-----------:|
+| 1            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `Signaling` |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
