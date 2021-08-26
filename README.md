@@ -22,9 +22,9 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [11](wip-0011.md) | Consensus (hard fork) | Improve consistency and availability of superblock voting protocol | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [12](wip-0012.md) | Consensus (hard fork) | Set minimum mining difficulty  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [13](wip-0013.md) |  | Apr 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
-| [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
+| [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [15](wip-0015.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Proposed |
+| [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
 
 ## TAPI signals
 
@@ -33,7 +33,7 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 
 | Bit position | WIP(s)                               | First signaling epoch | State       |
 |:------------:|:------------------------------------:|:---------------------:|:-----------:|
-| 0            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `Signaling` |
+| 0            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `In force` |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
