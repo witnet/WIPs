@@ -1,0 +1,96 @@
+<pre>
+  WIP: WIP-mariocao-median
+  Layer: Consensus (hard fork)
+  Title: Add median to RADON reducers
+  Authors: Mario Cao <mario@witnet.foundation>
+  Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track
+  Created: 2020-09-01
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+The **average median** is proposed to be included in the reducers catalog available in the RAD engine. Data requests will then support median function as part of the **retrieval**, **aggregation** and **tally** scripts.
+
+
+## Motivation and rationale
+
+In order to increase the flexibility and potential use cases of the Witnet protocol, it is paramount to continue expanding the catalog of available reducer functions.
+
+This document proposes to add the support of the **Median** as part of the `reducer` functions because, depending on the use case, it may be more descriptive than the average mean.
+
+From a data request perspective, the median is interesting because it mitigates the *negative* effect that outliers may have in a data request result at any stage where multiple data points are aggregated. For example, a data request using the **mean** function is sensitive to be tampered with if malicious reports are not filtered out previously.
+
+The median might be sensitive to "last reveal attacks" if at some point of the data aggregation, one of the witnessing nodes waits to know all other data points to influence the median result. However, this is not possible in the Witnet protocol as witnessing nodes follow a commitment scheme.
+
+
+## Specification
+
+The *Median* is defined as the "middle number" in a sorted, ascending or descending, array of numbers. If the data set has an odd number of entries, the number in the middle of the array is the median. Otherwise, if the data set has an even number of entries, then the median is defined as the arithmetic mean of the two middle values.
+
+**(1)**: The median will use the already defined operator identifier for `AverageMedian`, which is `0x05`.
+
+**(2)**: The median reducer will only support homogeneous arrays containing exclusively `Float` or `Integer` values. 
+
+**(3)**: `NaN` values are filtered out and ignored before sorting the array. `Infinity` and `-Infinity` values are considered valid.
+
+**(4)**: If the median is applied to an array with an even number of entries, the mean rounds half-way cases away from zero (as defined in the `AverageMean` reducer).
+
+**(5)**: The existing`ModeEmpty` error will be repurposed and renamed as `EmptyArray`.
+
+**(6)**: If the array  is empty, the RAD engine will output an `EmptyArray` error.
+
+
+## Backwards compatibility
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement the protocol improvements proposed in this document.
+
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when evaluating transactions or computing their own data request eligibility.
+
+As a result:
+
+- Non-implementers MAY NOT get their blocks and transactions accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+
+### Libraries, clients, and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing the any functionality related to the RAD engine. For example, this is the case of the [Sheikah][sheikah] data request editor and `witnet-requests-js` Javascript library.
+
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvement can be found in the [pull request #2049](https://github.com/witnet/witnet-rust/pull/2049) of the [witnet-rust] repository.
+
+
+## Adoption Plan
+
+An adoption plan will be proposed upon moving this document from the _Draft_ stage to the _Proposed_ stage.
+
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+Special thanks to [Luis Rubio][lrubiorod] and to [Tomasz Polaczyk][tmpolaczyk] for contributing to the reference implementation in Rust.
+
+
+[lrubiorod]: https://github.com/lrubiorod
+[sheikah]: https://github.com/witnet/sheikah
+[tmpolaczyk]: https://github.com/tmpolaczyk
+[witnet-requests-js]: https://github.com/witnet/witnet-requests-js
+[witnet-rust]: https://github.com/witnet/witnet-rust/
