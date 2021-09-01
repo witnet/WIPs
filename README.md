@@ -25,7 +25,7 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [15](wip-0015.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
 | [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [wip-mariocao-median](wip-mariocao-median.md) | Consensus (hard fork) | Add median to RADON reducers | [Mario Cao](https://github.com/mariocao) | Standards Track | Draft |
+| [17](wip-0017.md) | Consensus (hard fork) | Add median to RADON reducers | [Mario Cao](https://github.com/mariocao) | Standards Track | Draft |
 
 
 ## TAPI signals
