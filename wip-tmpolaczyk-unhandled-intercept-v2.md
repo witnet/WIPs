@@ -1,0 +1,84 @@
+<pre>
+  WIP: WIP-XXXX
+  Layer: Consensus (hard fork)
+  Title: Remove message argument from UnhandledIntercept RADON error
+  Authors: Tomasz Polaczyk <tomasz@witnet.foundation>
+  Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track
+  Created: 2020-09-03
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+The `UnhandledIntercept` RADON error is used to represent RADON script execution errors that do not have a corresponding error code. To help with the identification of unhandled errors, the `UnhandledIntercept` error includes an error message. This message is included in the tally transaction, and it must be agreed upon by all the nodes in the network. Therefore, any changes to this message may result in hard forks. This proposal removes the message argument to avoid any future problems.
+
+## Motivation and rationale
+
+During the implementation of [WIP-0017][WIP-0017], we have noticed that renaming a `RadError` may invalidate some tally transactions, creating a hard fork. The reason for that is the `UnhandledIntercept` error which has one extra argument, the "message", which is implemented in Rust as:
+
+```rust
+format!("inner: {:?}", inner)
+```
+
+In other words, it creates a string that contains the debug representation of the inner error. The debug representation is created by the Rust compiler, and it may change between Rust versions. And the inner error is supposed to be an implementation detail of witnet-rust, so it doesn't make much sense for it to be part of consensus-critical code. This gives us a good reason to remove this message.
+
+
+## Specification
+
+Starting from and including the activation epoch:
+
+**(1)**: All the data requests that result in an `UnhandledIntercept` RADON error (error code 0xFF) must serialize this error with no extra arguments.
+
+**(2)**: Any tally that contains an `UnhandledIntercept` RADON error (error code `0xFF`) with arguments will be considered invalid.
+
+
+## Backwards compatibility
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement the protocol improvements proposed in this document.
+
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when evaluating transactions or computing their own data request eligibility.
+
+As a result:
+
+- Non-implementers MAY NOT get their blocks and transactions accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+
+### Libraries, clients, and interfaces
+
+Most users of the RAD engine will be unaffected by this change, as it only changes the CBOR serialization of one error. For example, a client like [Sheikah][sheikah] will not be affected because the data request result is encoded using JSON, so it can preserve the inner error in the `UnhandledIntercept` error case. Any clients that want to see the error message that would have been included in a `UnhandledIntercept` error can do so by fetching the reveals and running the tally script locally.
+
+The solidity contracts that are using the [witnet-ethereum-bridge][witnet-ethereum-bridge] will not be affected because reading error `0xFF` returns a generic error message: `Unknown error (0xFF)`, ignoring the message argument of the CBOR-encoded error.
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvement can be found in the [unhandled-intercept-v2 branch](https://github.com/tmpolaczyk/witnet-rust/commits/unhandled-intercept-v2) of the [witnet-rust] repository.
+
+
+## Adoption Plan
+
+An adoption plan will be proposed upon moving this document from the _Draft_ stage to the _Proposed_ stage.
+
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+[sheikah]: https://github.com/witnet/sheikah
+[witnet-rust]: https://github.com/witnet/witnet-rust/
+[witnet-ethereum-bridge](https://github.com/witnet/witnet-ethereum-bridge)
+[WIP-0017](https://github.com/witnet/WIPs/blob/master/wip-0017.md)
