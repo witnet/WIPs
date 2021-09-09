@@ -1,0 +1,191 @@
+<pre>
+  WIP: WIP-0019
+  Layer: Consensus (hard fork)
+  Title: Random Number Generation (RNG) functionality
+  Authors: Adán SDPC <adan@witnet.foundation>
+  Discussions-To: https://github.com/witnet/witnet-rust/discussions/2058
+  Status: Draft
+  Type: Standards Track
+  Created: 2021-09-06
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+A new type of data source is proposed to leverage the crowd-attestation mechanism of the Witnet protocol to enable
+Random Number Generation (RNG) functionality inside data requests.
+
+
+## Motivation and rationale
+
+Just in the same way as price feeds are the fundamental oracle-based building block for many DeFi protocols RNGs are
+quickly becoming a keystone building block for non-fungible tokens (NFTs).
+
+Many use cases are arising in which the smart contracts generating the NFTs are in need of reliable and tamper-proof
+random inputs for their generative algorithms ensuring the "uniqueness" of each piece. That is, they need to randomly
+assign a distinguishable set of scarce attributes or traits to each newly minted NFT unit.
+
+The case for oracle-powered RNGs expands beyond NFTs, as many other constructs also benefit from random inputs, e.g.
+in the area of gaming, lotteries, gambling, random committee selection, etc.
+
+Due to the robustness and flexibility of the crowd-attestation mechanism of the Witnet protocol, there is a huge
+opportunity to add RNG capabilities to it with very little and self-contained changes.
+
+In particular, the mechanism hereby introduced consists of a new type of data source in which no external HTTP(S)
+servers are queried, and nodes are instead required to secretly commit secret sequences of bytes. The rest of the
+protocol follows in the traditional way, with the only addition of a new reducer function that concatenates the
+revealed values in a deterministic order and hashes the sequence together so as to produce a single, uniform and
+pseudo-random output that will be used as the result of the request.
+
+Additionally, a new deterministic ordering for reveals inside tally transactions is introduced so as to rule out any
+malleability attempt from tally producers. 
+
+Due to the overlap of Witnet's inherent commitment scheme with this last aggregation step, there is no need for the
+committed bytes to be verifiably random. Under the assumptions of stock hashing functions, even if the committers
+collude around crafting their commitments in such a way that the output is favorable to them, as long as 1 single
+committer remains independent and commits a value that is secret to the rest, the final result will hold the desired
+randomness properties.
+
+In this construction, the assumptions for reveal censorship are still the same as for the base witnessing protocol.
+It is assumed that miners will not coordinate to censor specific reveals with a view to manipulate RNG outputs, given
+that they cannot predict whether their block candidates will be accepted by the rest of the network, and that there
+exists an economic incentive in form of rewards for non-coordinated miners to include the missing (censored) reveals
+into their own block proposals.
+
+
+## Specification
+
+### Introduction of data request type `1`
+
+**(1)** A new type of data source is introduced with name `Rng` and identifier `1`.
+
+**(2)** Type `1` sources have the same `script` attribute as type `0` sources, but no `url` attribute.
+
+**(3)** The script field in type `1` sources use the same RADON operators and encoding as type `0`.
+
+### Retrieval of type `1` sources
+
+**(4)** When retrieving a type `1` source, a node SHOULD generate on the spot a random and secret sequence of 32
+bytes.
+
+**(5)** This random and secret sequence of 32 bytes MUST be used as the result of the retrieval. 
+
+### Reveal of data requests containing type `1` sources
+
+**(6)** Data requests containing type `1` sources MUST be revealed normally.
+
+### Ordering of reveals in tally transactions
+
+**(7)** When producing and validating tally transactions, reveals must be listed and considered in increasing order
+of the big-endian value of the `SHA256` hash of the concatenation of each revealer's 20-bytes Public Key Hash followed
+by the 32-bytes ID of the data request.
+
+```rust
+// Rust-alike pseudocode
+reveals.sort(|reveal| {
+  let mut data = Vec::new();
+  data.extend(reveal.body.pkh.bytes);
+  data.extend(data_request_id.bytes);
+
+  sha256(data)
+});
+```
+
+### Addition of a `ConcatenateAndHash` reducer
+
+**(8)** A new reducer function with code `0x0B` and name `ConcatenateAndHash` is introduced.
+
+**(9)** The `ConcatenateAndHash` reducer function is a general purpose reducer function: it can be used as a reducer
+in the RADON scripts of any type of data sources, as well as in the reducing step of the aggregation and tally stages.
+
+**(10)** The `ConcatenateAndHash` reducer function only accepts a non-empty homogeneous `Array` of byte sequences as its
+input. That is, an `Array` containing one or more items of the `Bytes` type.
+
+**(11)** May the `ConcatenateAndHash` reducer function be applied on an input not satisfying (10), the output MUST be an
+error of type `UnsupportedReducer` (error code `0x12`).
+
+**(12)** May any of the `Bytes` items in the `Array` used as an input for the `ConcatenateAndHash` reducer function be
+comprised of less than 32 bytes, the bytes will be padded with zeroes on the most significant byte side, in such a way
+that the big-endian value of the sequence remains the same.
+
+**(13)** May any of the `Bytes` items in the `Array` used as an input for the `ConcatenateAndHash` reducer function be
+comprised of more than 32 bytes, only the 32 less significant bytes will be used.
+
+**(14)** The output of the  `ConcatenateAndHash` reducer function will be computed as the `SHA256` hash of the
+concatenation of all the `Bytes` items in the `Array` after being padded or trimmed if needed as specified in (12) and
+(13).
+
+
+## Backwards compatibility
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement the protocol improvements proposed in this document.
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when evaluating transactions or computing their own data request eligibility.
+
+As a result:
+
+- Non-implementers MAY NOT get their blocks and transactions accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+### Libraries, clients, and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing any of the functionality
+related to the RAD engine. For example, this is the case of the [Sheikah][sheikah] data request editor and `witnet
+-requests-js` Javascript library.
+
+In the case of `witnet-requests-js`, which did not provide for different types of data sources and rather assumed
+`HttpGet`, the following syntax is suggested:
+
+```js
+// HttpGet (type 0) source
+const request = new Witnet.Request()
+  .addHttpGetSource(/* url */)
+
+// Default source type should also be HttpGet (type 0) for backwards compatibility
+const request = new Witnet.Request()
+  .addSource(/* url */)
+
+// RNG (type 1) source
+const request = new Witnet.Request()
+  .addRandomSource()
+
+// Source types can be mixed, as long as their output types match
+const request = new Witnet.Request()
+  .addHttpGetSource(/* url */)
+  .addRandomSource()
+```
+  
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvement can be found in the [pull request #2053](https://github.com/witnet/witnet-rust/pull/2053) of the [witnet-rust] repository.
+
+
+## Adoption Plan
+
+An adoption plan will be proposed upon moving this document from the _Draft_ stage to the _Proposed_ stage.
+
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+Special thanks to [Luis Rubio][lrubiorod] and to [Tomasz Polaczyk][tmpolaczyk] for contributing to the reference implementation in Rust.
+
+
+[lrubiorod]: https://github.com/lrubiorod
+[sheikah]: https://github.com/witnet/sheikah
+[tmpolaczyk]: https://github.com/tmpolaczyk
+[witnet-requests-js]: https://github.com/witnet/witnet-requests-js
+[witnet-rust]: https://github.com/witnet/witnet-rust/
