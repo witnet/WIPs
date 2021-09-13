@@ -25,7 +25,7 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [15](wip-0015.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
 | [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [17](wip-0017.md) | Consensus (hard fork) | Add median to RADON reducers | [Mario Cao](https://github.com/mariocao) | Standards Track | Draft |
+| [17](wip-0017.md) | Consensus (hard fork) | Add median to RADON reducers | [Mario Cao](https://github.com/mariocao) | Standards Track | Proposed |
 | [18](wip-0018.md) | Consensus (hard fork) | Remove message argument from UnhandledIntercept RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Draft |
 
 
@@ -36,7 +36,8 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 
 | Bit position | WIP(s)                               | First signaling epoch | State       |
 |:------------:|:------------------------------------:|:---------------------:|:-----------:|
-| 0            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `In force` |
+| 0            | [14](wip-0014.md), [16](wip-0016.md) | `522240`              | `In force`  |
+| 1            | [17](wip-0017.md)                    | `656640`              | `Signaling` |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
