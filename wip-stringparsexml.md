@@ -1,0 +1,172 @@
+<pre>
+  WIP: WIP-00XX
+  Layer: Consensus (hard fork)
+  Title: Add StringParseXMLMap to RADON operators
+  Authors: Luis Rubio <luisr@witnet.foundation>
+  Discussions-To: `#dev-general` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track
+  Created: 2021-12-14
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+The `StringParseXMLMap` operator is proposed to be included in the operators catalog available in the RAD engine. Data requests
+will then support XML parsing as part of the **retrieval** scripts.
+
+
+## Motivation and rationale
+
+In order to increase the flexibility and potential use cases of the Witnet protocol, it is paramount to continue 
+expanding the catalog of available operators.
+
+This document proposes adding support for **XML parsing**, thus allowing the protocol to extract information from XML APIs
+or XML-encapsulated strings to be retrieved through data requests.
+
+## Specification
+
+The `StringParseXMLMap` operator converts a `String` (which is assumed to represent a valid XML document) into a `Map`, 
+following the next rules:
+- Every element MUST be turned into a `Map` in which the tag name will be inserted as the key, **attributes** 
+  would use the *@* symbol to precede their key name, and the elements inside would be also turned in another `Map`.
+  
+```xml
+<tag1 attr1="001">
+    <in_tag1>Hello</in_tag1>
+    <in_tag2>World</in_tag2>
+</tag1>
+```
+```rust
+{
+    tag1: {
+        @attr1: "001",
+        in_tag1: "Hello",
+        in_tag2: "World",
+    }
+}
+```
+
+- Leaf elements that have no attributes or children other than textual content MUST be added as an entry in the `Map` of
+  their parent element using their tag as the keys and their textual content as the values.
+
+```xml
+<tag1 attr1="001">
+    <in_tag1>Hello</in_tag1>
+    <in_tag2><Name>Witnet</Name></in_tag2>
+</tag1>
+```
+```rust
+{
+    tag1: {
+        @attr1: "001",
+        in_tag1: "Hello",
+        in_tag2: {
+            Name: "Witnet",
+        },
+    }
+}
+```
+
+- Elements with the same tag name MUST be collected into a `RadonArray` with the tag name in common as a *key* of the parent `Map`.
+```xml
+<tag1 attr1="001">
+    <in_tag>Hello</in_tag>
+    <in_tag>
+      <Name>Witnet</Name>
+    </in_tag>
+</tag1>
+```
+```rust
+{
+    tag1: {
+        @attr1: "001",
+        in_tag: [
+            "Hello",
+            {
+                Name: "Witnet",
+            },
+        ],
+    }
+}
+```
+
+- Text children elements MUST be included into the parent `Map` using the `_text` key.
+
+```xml
+<tag1 attr1="001">
+    <in_tag1>
+        Hello
+        <in_in_tag1>World</in_in_tag1>
+        Witnet
+    </in_tag1>
+    <in_tag2 attr="hello">World</in_tag2>
+    <in_tag3>HelloWorld</in_tag3>
+</tag1>
+```
+```rust
+{
+    tag1: {
+        @attr1: "001",
+        in_tag1: {
+            _text: [
+                "Hello",
+                "Witnet"
+            ],
+            in_in_tag1: "World",
+        },
+        in_tag2: {
+            @attr: "hello",
+            _text: "World",
+        },
+        in_tag3: "HelloWorld",
+    }
+}
+```  
+
+
+## Backwards compatibility
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement the protocol improvements proposed in this document.
+
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when evaluating transactions or computing their own data request eligibility.
+
+As a result:
+
+- Non-implementers MAY NOT get their blocks and transactions accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+
+### Libraries, clients, and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing any functionality related to the RAD engine. For example, this is the case of the [Sheikah][sheikah] data request editor and the `witnet-requests-js` Javascript library.
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvement can be found in the [pull request #2138](https://github.com/witnet/witnet-rust/pull/2138) of the [witnet-rust] repository.
+
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+Special thanks to Witnet devs for contributing to the reference implementation in Rust.
+
+
+[lrubiorod]: https://github.com/lrubiorod
+[sheikah]: https://github.com/witnet/sheikah
+[tmpolaczyk]: https://github.com/tmpolaczyk
+[witnet-requests-js]: https://github.com/witnet/witnet-requests-js
+[witnet-rust]: https://github.com/witnet/witnet-rust/
