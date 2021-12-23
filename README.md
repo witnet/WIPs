@@ -28,6 +28,7 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [17](wip-0017.md) | Consensus (hard fork) | Add median to RADON reducers | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
 | [18](wip-0018.md) | Consensus (hard fork) | Remove message argument from UnhandledIntercept RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
 | [19](wip-0019.md) | Consensus (hard fork) | Random Number Generation (RNG) functionality | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [20](wip-0020.md) | Consensus (hard fork) | Support HTTP-POST in RADON | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Draft |
 
 ## TAPI signals
 
