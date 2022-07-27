@@ -40,7 +40,7 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 |:------------:|:-------------------------------------------------------:|:---------------------:|:-----------:|
 | 0            | [14](wip-0014.md), [16](wip-0016.md)                    | `522240`              | `In force`  |
 | 1            | [17](wip-0017.md), [18](wip-0018.md), [19](wip-0019.md) | `656640`              | `In force`  |
-| 2            | [20](wip-0020.md), [21](wip-0021.md)                    | `1032960`             | `Signaling` |
+| 2            | [20](wip-0020.md), [21](wip-0021.md)                    | `1032960`             | `In force`  |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
