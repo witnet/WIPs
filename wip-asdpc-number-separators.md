@@ -20,7 +20,7 @@ APIs that provide numbers formatted in a non-conventional manner can also be use
 
 Witnet is designed as a generalist oracle: there is no need for the nodes to select and publish specific datasets
 that they want to offer to smart contracts. On the contrary, it is rather on the data consumers (the smart contract
-developers) to explicitly select multiple data sources to be queried over HTTPS or orther protocols, define how to
+developers) to explicitly select multiple data sources to be queried over HTTPS or other protocols, define how to
 process the responses, and how to filter and aggregate the output of those multiple sources. In the Witnet protocol,
 we often call that specification _data request_, or more recently, _oracle query_. 
 
@@ -28,7 +28,7 @@ This generalist approach has been proven more than effective to create decentral
 it enables the user to pick virtually any publicly accessible APIs as their data sources, while mitigating trust in any 
 single of those by means of basic filtering and aggregation techniques.
 
-This approach comes however with a few challenges, as public APIs come in all sizes and colors, and each of them will
+However, this approach comes with a few challenges, as public APIs come in all sizes and colors, and each of them will
 format data differently. We are not only speaking of the data structure or _schema_, but also how different data
 types are encoded.
 
@@ -64,7 +64,7 @@ arguments to any number processing RAD operators.
 - For the scope of this proposal, the _number operators_ are `Array::get_float`, `Array::get_integer`, `Map::get_float`,
 `Map::get_integer`, `String::to_float`, and `String::to_integer`.
 
-- A _decimal separator_ is the character or sequence of characters that mark the separation between the integer part and
+- A _decimal separator_ is the character or sequence of characters that marks the separation between the integer part and
 the decimal part of a number.
 
 - A _thousands separator_ is the character or sequence of characters that mark thousands, millions, billions, etc. in 
@@ -95,7 +95,7 @@ by an empty string).
 **(7)** All number operators MUST pre-process numbers in such a way that any occurrence of the user-provided decimal
 separator are replaced by the default decimal separator as defined in (4).
 
-**(8)** Replacement of decimal separators do not affect processing of integer numbers, and hence the decimal separator 
+**(8)** Replacement of decimal separators does not affect the processing of integer numbers, and hence the decimal separator 
 argument can be elided for number operators that output integer numbers.
 
 ## Backwards compatibility
@@ -119,7 +119,7 @@ As a result:
 - Oracle queries MAY resolve to `InsufficientConsensus` given a witnessing committee formed by a mixed sample of
 implementers and non-implementers.
 
-Due to this last points, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be
+Due to these last points, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be
 proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
 
 
