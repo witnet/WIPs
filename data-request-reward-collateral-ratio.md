@@ -6,7 +6,7 @@
   Discussions-To: https://github.com/witnet/witnet-rust/discussions/2168
   Status: Draft
   Type: Standards Track
-  Created: ????-??-??
+  Created: 2022-10-04
   License: BSD-2-Clause
 </pre>
 
@@ -26,7 +26,7 @@ However, redistributing slashed collateral introduces certain types of collatera
 
 A potential downside of introducing a reward to collateral ratio at the node level is that it is possible to manipulate the reputation system by creating and solving data requests which other nodes will not solve. This proposal solves this issue by introducing this ratio at the protocol level. A data request which does not adhere to the minimum reward to collateral ratio will be considered as invalid. If a block is proposed including such a data request, it is also considered as invalid.
 
-One additional advantage of a protocol-enforced reward to collateral ratio is that several (griefing) attacks becoming significantly less interesting from an economic viewpoint. Without a reward to collateral ratio, tt's possible to create data requests that lock up collateral from other nodes or aim to introduce collateral slashing for virtually no money. For example, you could create malicious requests requiring 100 WIT collateral and set all rewards to 1 nanoWIT resulting in the data request being virtually free. If a reward to collateral ratio is introduced these type of griefing attacks will cost a tangible amount of money to execute.
+One additional advantage of a protocol-enforced reward to collateral ratio is that several (griefing) attacks becoming significantly less interesting from an economic viewpoint. Without a reward to collateral ratio, it is possible to create data requests that lock up collateral from other nodes or aim to introduce collateral slashing for virtually no money. For example, you could create malicious requests requiring 100 WIT collateral and set all rewards to 1 nanoWIT resulting in the data request being virtually free. If a reward to collateral ratio is introduced these type of griefing attacks will cost a tangible amount of money to execute.
 
 ## Specification
 
@@ -34,9 +34,9 @@ One additional advantage of a protocol-enforced reward to collateral ratio is th
 
 Properly enforcing a reward to collateral ratio at the protocol level requires adding this ratio as a consensus constant. Adding a consensus constant will change the magic number nodes use to validate inter-node communication. Therefore, proper precautions need to be implemented such that this number only changes when the WIP is accepted.
 
-The moment the WIP is accepted, nodes which receive a data request that does not adhere to the reward to collateral ratio should refuse to add it to their local mempool.
+The moment the WIP is activated, nodes which receive a data request that does not adhere to the reward to collateral ratio MUST refuse to add it to their local mempool.
 
-```
+```Rust
 let dr_tx_reward_collateral_ratio = dr_tx.body.dr_output.witness_reward / dr_tx.body.dr_output.collateral;
 if dr_tx_reward_collateral_ratio < self.minimum_reward_collateral_ratio {
     // Do not insert the transaction in our local memory pool
@@ -53,7 +53,7 @@ if dr_tx_reward_collateral_ratio < self.minimum_reward_collateral_ratio {
 
 Each and every block a node receives is validated which implies that all transactions in it are checked against a set of rules. If a node receives a block containing a data request that does not adhere to the required reward to collateral ratio, they should mark the block as invalid and refuse it as a candidate.
 
-```
+```Rust
 pub fn validate_data_request_output(
     request: &DataRequestOutput,
     required_reward_collateral_ratio: u64,
@@ -76,7 +76,7 @@ pub fn validate_data_request_output(
 
 ### Introduction of a configurable data request reward collateral ratio
 
-Next to a protocol-enforced reward to collateral ratio, node operators should be able to set a ratio they consider acceptable. This ratio cannot be set lower than the protocol-enforced ratio. Setting the ratio higher than the protocol-enforced ratio implies that these node operators will not add received data requests with a lower ratio to their local mempool. However, if they receive a block with a ratio which is lower than the ratio they accept but higher than the protocol-enforced ratio, they have to accept it as a valid candidate.
+Next to a protocol-enforced reward to collateral ratio, node operators SHOULD be able to set a ratio they consider acceptable. This ratio MUST NOT be set lower than the protocol-enforced ratio. Setting the ratio higher than the protocol-enforced ratio implies that these node operators MAY refuse to add received data requests with a lower ratio to their local mempool. However, if they receive a block with a ratio which is lower than the ratio they accept but higher than the protocol-enforced ratio, they MUST to accept it as a valid candidate.
 
 ### Reward collateral ratio proposal
 
