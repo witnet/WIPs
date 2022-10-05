@@ -18,21 +18,21 @@ This improvement proposal aims to introduce a data request reward to collateral 
 
 Node operators in the Witnet network can participate in two tasks: building blocks containing transactions and solving data requests. This improvement proposal aims to improve the operator's experience of the latter task. When node operators are eligible to solve data requests, they have to post a collateral which serves as a measure to keep them honest. In turn, if they are honest and reveal an answer to the data request which aligns with the answers of other nodes, they receive a reward. At the moment, the default collateral requirement is 1 WIT and the minimum reward for data request solvers is 1 nanoWIT. This means that a data request solver has to stake 1 billion times the reward he can earn. Some [data requests](https://www.witnet.network/search/87495de399cb4d12ce37b959149278a3a299253342deccd987a02bc5af803818) even amplify this imbalance by increasing the required collateral while keeping the reward at 1 nanoWIT resulting in the data request solver having to stake 2.5 billion times the reward they can earn. [Other requests](https://www.witnet.network/search/2c9e60dc9f8492310bb1982fd87801f4a8ef0f3c261035826256b312f836ee5c) do pay a more fair reward for the required collateral, but even there the reward to collateral the ratio is still 1 to 5000.
 
-Due to these imbalanced reward to collateral ratios, revealing an out-of-consensus value can be extremely punishing. Observing data requests in the past six months reveals that the average `lie rate` is about 0.2% meaning the average node operator reveals an out-of-consensus value for every 500 data requests he solves. Obviously, if the out-of-consensus reveal was an attempt at manipulating a data request, this punishment is justified. However, sometimes node operators involuntarily reveal an out-of-consensus value. In some cases, out-of-consensus reveals can be explained by [badly configured data requests](https://www.witnet.network/search/aa7c0529371ccc4d09c01e0fbffdf90b1829117f141e098ec06f12a6addb9581). In other cases, like with price-feed requests which constitute the majority of data requests, quering the requested API's a fraction of a second too late yields a value which is too different from the other reveals resulting in the node operator's collateral being slashed.
+Due to these imbalanced reward to collateral ratios, revealing an out-of-consensus value can be extremely punishing. Observing data requests in the past six months reveals that the average `lie rate` is about 0.2% meaning the average node operator reveals an out-of-consensus value for every 500 data requests he solves. Obviously, if the out-of-consensus reveal was an attempt at manipulating a data request, this punishment is justified. However, sometimes node operators involuntarily reveal an out-of-consensus value. In some cases, out-of-consensus reveals can be explained by [badly configured data requests](https://www.witnet.network/search/aa7c0529371ccc4d09c01e0fbffdf90b1829117f141e098ec06f12a6addb9581). In other cases, like with price-feed requests which constitute the majority of data requests, quering the requested API's a fraction of a second too late yields a value which is too different from the other reveals, resulting in the node operator's collateral being slashed.
 
 At the moment, despite the average reward to collateral ratio being quite low, revealing an out-of-consensus value is not actually punishing because slashed collateral is distributed amongst honest nodes. While a node operator will lose significantly more collateral than the potential reward when he involuntarily reveals an out-of-consensus value, the fact that he can earn the slashed collateral of other operators when he is honest offsets this.
 
-However, redistributing slashed collateral introduces certain types of collateral-stealing attacks and [WIP-0023](https://github.com/drcpu-github/WIPs/blob/burn-slashed-collateral/burn-slashed-collateral.md) proposes to burn slashed collateral to mitigate these attacks. Under the assumption that this WIP is accepted, solving data requests with significantly imbalanced ratios does not make economic sense anymore. The only reason node operators should participate in solving them is because it improves their odds to mine blocks and earn the associated reward. This could result in node operators aiming to solve the minimum amount of data requests possible to still profit from increased mining odds which is obviously bad for the overall network health.
+However, redistributing slashed collateral introduces certain types of collateral-stealing attacks, and [WIP-0023](https://github.com/drcpu-github/WIPs/blob/burn-slashed-collateral/burn-slashed-collateral.md) proposes to burn slashed collateral to mitigate these attacks. Under the assumption that this WIP is accepted, solving data requests with significantly imbalanced ratios does not make economic sense anymore. The only reason node operators should participate in solving them is because it improves their odds to mine blocks and earn the associated reward. This could result in node operators aiming to solve the minimum amount of data requests possible to still profit from increased mining odds, which is obviously bad for the overall network health.
 
 A potential downside of introducing a reward to collateral ratio at the node level is that it is possible to manipulate the reputation system by creating and solving data requests which other nodes will not solve. This proposal solves this issue by introducing this ratio at the protocol level. A data request which does not adhere to the minimum reward to collateral ratio will be considered as invalid. If a block is proposed including such a data request, it is also considered as invalid.
 
-One additional advantage of a protocol-enforced reward to collateral ratio is that several (griefing) attacks becoming significantly less interesting from an economic viewpoint. Without a reward to collateral ratio, it is possible to create data requests that lock up collateral from other nodes or aim to introduce collateral slashing for virtually no money. For example, you could create malicious requests requiring 100 WIT collateral and set all rewards to 1 nanoWIT resulting in the data request being virtually free. If a reward to collateral ratio is introduced these type of griefing attacks will cost a tangible amount of money to execute.
+One additional advantage of a protocol-enforced reward to collateral ratio is that several (griefing) attacks becoming significantly less interesting from an economic viewpoint. Without a reward to collateral ratio, it is possible to create data requests that lock up collateral from other nodes or aim to introduce collateral slashing for virtually no money. For example, you could create malicious requests requiring 100 WIT collateral and set all rewards to 1 nanoWIT resulting in the data request being virtually free. If a reward to collateral ratio is introduced, this type of griefing attacks will cost a tangible amount of money to execute.
 
 ## Specification
 
 ### Introduction of a protocol-enforced data request reward collateral ratio
 
-Properly enforcing a reward to collateral ratio at the protocol level requires adding this ratio as a consensus constant. Adding a consensus constant will change the magic number nodes use to validate inter-node communication. Therefore, proper precautions need to be implemented such that this number only changes when the WIP is accepted.
+Properly enforcing a reward to collateral ratio at the protocol level requires adding this ratio as a consensus constant. Adding a consensus constant will change the magic number nodes used to validate communication between nodes. Therefore, proper precautions need to be implemented such that this number only changes when the WIP is accepted.
 
 The moment the WIP is activated, nodes which receive a data request that does not adhere to the reward to collateral ratio MUST refuse to add it to their local mempool.
 
@@ -51,7 +51,7 @@ if dr_tx_reward_collateral_ratio < self.minimum_reward_collateral_ratio {
 }
 ```
 
-Each and every block a node receives is validated which implies that all transactions in it are checked against a set of rules. If a node receives a block containing a data request that does not adhere to the required reward to collateral ratio, they should mark the block as invalid and refuse it as a candidate.
+Each and every received by a node is validated, which implies that all transactions in it are checked against a set of rules. If a node receives a block containing a data request that does not adhere to the required reward to collateral ratio, they should mark the block as invalid and refuse it as a candidate.
 
 ```Rust
 pub fn validate_data_request_output(
@@ -76,7 +76,7 @@ pub fn validate_data_request_output(
 
 ### Introduction of a configurable data request reward collateral ratio
 
-Next to a protocol-enforced reward to collateral ratio, node operators SHOULD be able to set a ratio they consider acceptable. This ratio MUST NOT be set lower than the protocol-enforced ratio. Setting the ratio higher than the protocol-enforced ratio implies that these node operators MAY refuse to add received data requests with a lower ratio to their local mempool. However, if they receive a block with a ratio which is lower than the ratio they accept but higher than the protocol-enforced ratio, they MUST to accept it as a valid candidate.
+Next to a protocol-enforced reward to collateral ratio, node operators SHOULD be able to set a ratio they consider acceptable. This ratio MUST NOT be set lower than the protocol-enforced ratio. Setting the ratio higher than the protocol-enforced ratio implies that these node operators MAY refuse to add received data requests with a lower ratio to their local mempool. However, if they receive a block with a ratio which is lower than the ratio they accept but higher than the protocol-enforced ratio, they MUST accept it as a valid candidate.
 
 ### Reward collateral ratio proposal
 
@@ -84,7 +84,7 @@ There are two sensible values for a protocol-enforced reward to collateral ratio
 
 The first one is that the ratio should offset the involuntary lie ratio. Assuming this is 0.2%, the minimum reward to collateral ratio should be 1 to 500.
 
-The second one can be derived from the maximum amount of witnesses in a data request which, following [WIP-0007](https://github.com/witnet/WIPs/blob/master/wip-0007.md), is 125. Assuming creating data requests requiring 125 witnesses has as goal to achieve maximum security, the reward for them should be proportional. This implies that such data request should pay out a reward equal to the required collateral or that the reward to collateral ratio should be 1 to 125.
+The second one can be derived from the maximum amount of witnesses in a data request which, following [WIP-0007](https://github.com/witnet/WIPs/blob/master/wip-0007.md), is 125. Assuming creating data requests requiring 125 witnesses has as goal to achieve maximum security, the reward for them should be proportional. This implies that such data request should pay out a reward equal to the required collateral, or that the reward to collateral ratio should be 1 to 125.
 
 ## Backwards compatibility
 
@@ -113,9 +113,7 @@ A reference implementation for the proposed protocol improvement can be found in
 
 ## Adoption Plan
 
-An activation date is proposed for <Month> <Day> <Year> at 9am UTC, that is, protocol epoch #<Epoch>.
-
-The signaling bit for this improvement proposal is `3` (`0b00000000000000000000000000001000`) and the `first_signaling_epoch` is set to #<Epoch>.
+To be determined.
 
 ## Acknowledgements
 
