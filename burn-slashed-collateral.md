@@ -6,7 +6,7 @@
   Discussions-To: https://github.com/witnet/witnet-rust/discussions/2238
   Status: Draft
   Type: Standards Track
-  Created: ????-??-??
+  Created: 2022-10-06
   License: BSD-2-Clause
 </pre>
 
