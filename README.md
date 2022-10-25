@@ -30,6 +30,8 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [19](wip-0019.md) | Consensus (hard fork) | Random Number Generation (RNG) functionality | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [20](wip-0020.md) | Consensus (hard fork) | Support HTTP-POST in RADON | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Proposed |
 | [21](wip-0021.md) | Consensus (hard fork) | Add StringParseXMLMap to RADON operators | [Luis Rubio](https://github.com/lrubiorod) | Standards Track | Proposed |
+| [22](wip-0022.md) | Consensus (hard fork) | Data request reward collateral ratio | [drcpu](https://github.com/drcpu-github) | Standards Track | Draft |
+| [23](wip-0023.md) | Consensus (hard fork) | Burn slashed collateral | [drcpu](https://github.com/drcpu-github) | Standards Track | Draft |
 
 ## TAPI signals
 
