@@ -22,25 +22,28 @@ Presently, the reputation system suffers from two major weaknesses. The first on
 
 New nodes can sometimes earn a disproportionately large amount of reputation by solving a single data request. This appears to be a random process, but it does challenge the assumption of the reputation system where only nodes which have proven themselves to be thrustworthy solve the majority of data requests. The way this usually occurs is that a large set of reputation packets expires or is slashed and all this reputation is redistributed in the same epoch to a small set of nodes. Depending on the velocity of witnessing activities in the network, this can even result in a reinforcing effect because those large packets of reputation will again expire at the same moment in time. However, up until this moment, we have not really observed behavior like this.
 
-To illustrate the distribution of reputation earned by solving a single data request, I analyzed the size of each reputation packet up to epoch 1500000. Below table is the description of a cumulative function and can be summarized as `x%` of packet has a size of `y` reputation or less.
+To illustrate the distribution of reputation earned by solving a single data request, I analyzed the how reputation flowed up to epoch 1500000. Below table is the description of a cumulative function and can be summarized as `x%` of packet has a size of `y` reputation or less.
 
-| Packet | Size |
-|--------|------|
-|   10%  |    2 |
-|   20%  |    3 |
-|   30%  |    6 |
-|   40%  |   10 |
-|   50%  |   17 |
-|   60%  |   31 |
-|   70%  |   58 |
-|   80%  |  113 |
-|   90%  |  215 |
-|   95%  |  329 |
-|   99%  |  804 |
+| Packet | Gained | Expired | Slashed |
+|--------|--------|---------|---------|
+|   10%  |      2 |     136 |      11 |
+|   20%  |      3 |     342 |      37 |
+|   30%  |      6 |     640 |      76 |
+|   40%  |     10 |    1105 |     125 |
+|   50%  |     17 |    1881 |     192 |
+|   60%  |     31 |    3259 |     286 |
+|   70%  |     58 |    5831 |     425 |
+|   80%  |    113 |   10488 |     650 |
+|   90%  |    215 |   18055 |    1100 |
+|   95%  |    329 |   25227 |    1671 |
+|   99%  |    804 |   41927 |    4143 |
+|   MAX  |  52797 |  114404 |   40360 |
 
-This table shows that, in most cases, solving a data request does not yield a disproportionate amount of reputation. For example, when a node resolves a data request, it will earn 17 reputation or less half of the time. However, 1% of the time, a node will earn 804 reputation or more. In the past 1500000 epochs, there have been roughly 27M reveals meaning there were also around 270000 cases where a reveal was rewarded with 804 reputation or more. Given the average reputation distribution, in 270000 cases, a set of nodes was propelled into the upper quarter of the TRS by solving one data request instead of finding its way there through solving multiple consecutive data requests honestly.
+This table shows that, in most cases, solving a data request does not yield a disproportionate amount of reputation. For example, when a node resolves a data request, it will earn 17 reputation or less half of the time. However, 1% of the time, a node will earn 804 reputation or more. Note that the most reputation a node earned during an epoch was 52797. In the past 1500000 epochs, there have been roughly 27M reveals meaning there were also around 270000 cases where a reveal was rewarded with 804 reputation or more. Given the average reputation distribution, in 270000 cases, a set of nodes was propelled into the upper quarter of the TRS by solving one data request instead of finding its way there through solving multiple consecutive data requests honestly.
 
-In order to make sure the distributed reputation packets do not become disproportionately large, whenever a large batch of reputation expires, it will need to be distributed over several epochs rather than all in one epoch.
+Furthermore, above table also shows the percentiles for expired and slashed reputation per epoch. This clearly indicates how it happens that some epochs witnesses can earn an astonishing amount of reputation as in 1% of the cases more than 41927 reputation expires (up to 114404) and / or more than 4143 reputation is slashed from node operators (up to 40360).
+
+In order to make sure the distributed reputation packets do not become disproportionately large, whenever a large batch of reputation expires or is slashed, it will need to be distributed over several epochs rather than all in one epoch.
 
 ### Reputation-stealing attacks
 
@@ -48,7 +51,7 @@ The second major weakness is the efficacy of reputation-stealing attacks. As the
 
 The straightforward solution to this issue is to distribute slashed reputation in the next epoch which contains data requests. By virtue of data request solving eligibility being random, no node operator can predict whether he will be able to solve any of the data requests in the epoch after he has forced other node operators to lie. Thus introducing this change significantly reduces the efficacy of such an attack.
 
-However, distributing slashed reputation in a single epoch with data requests would again result in nodes being able to earn unreasonably large packets of reputation. Hence, we also need to redistribute the slashed reputation using a more gradual distribution spread over multiple data request epochs. While distributing slashed reputation over multiple subsequent epochs would seem to result in an increased probability of a malicious node operator profiting off its malicious data requests, the expected value of stolen reputation stays constant as demonstrated below.
+However, distributing slashed reputation in a single epoch with data requests would again result in nodes being able to earn unreasonably large packets of reputation. This is clearly shown in the above table which shows that in 10% of the cases over 1100 reputation was slashed. Hence, we also need to redistribute the slashed reputation using a more gradual distribution spread over multiple data request epochs. While distributing slashed reputation over multiple subsequent epochs would seem to result in an increased probability of a malicious node operator profiting off its malicious data requests, the expected value of stolen reputation stays constant as demonstrated below.
 
 First, the probability of any operator solving a data request requiring `w` witnesses is defined as `C(w, 1) * E ^ 1 * (1 - E) ^ (w - 1)` where `E` is the eligibility of the operator. If a data request requires 10 witnesses and the node operator's eligibility is `0.05%`, the probability `P` of it solving a data request is `C(10, 1) * 0.05% ^ 1 * 99.95% ^ 9 = 0.498%`.
 
