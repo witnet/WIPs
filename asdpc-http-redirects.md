@@ -1,0 +1,109 @@
+<pre>
+  WIP: ASDPC-HTTP-REDIRECTS
+  Layer: Consensus (hard fork)
+  Title: HTTP redirects in retrievals
+  Authors: Adán SDPC <adan@witnet.foundation>
+  Discussions-To: `#dev-lounge` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track
+  Created: 2023-01-11
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+Establishes how nodes are expected to handle HTTP redirects when performing data retrieval in the Witnet protocol.
+
+## Motivation and rationale
+
+The most popular feature of the Witnet protocol is the ability to perform retrieval of information from several data
+sources over the HTTP protocol in such a way that trust on specific data providers can be mitigated.
+
+In the HTTP protocol, there are many reasons why a request can fail to complete. These include malformed requests,
+server errors, client errors, network disruptions, etc. Most of those errors are identified by their own HTTP
+response status codes.
+
+One particular case of response status codes are _redirection messages_, because they are not errors per se. When an
+HTTP client receives a redirection message, the client is expected to resend its request to a different host as
+specified by the received message.
+
+It is customary for HTTP clients such as web browsers to follow redirects a limited number of times. That is, to obey
+the redirection messages that they receive, up to a certain limit of times. This limit exists to prevent potential
+abuse or attacks.
+
+Current implementations of the Witnet protocol do not follow redirects. They rather handle redirection messages
+indistinctly to HTTP error messages.
+
+The lack of support for HTTP redirects precludes the usage of many HTTP data sources such as public APIs that may
+respond with redirection messages consistently or inconsistently (e.g. "temporary redirects") as part of their normal
+operation.
+
+This document introduces a set of ecosystem-wide rules on how to handle HTTP redirects, thus widening the choice of
+data sources that can be used in Witnet oracle queries. It also establishes a limit of 4 redirects per retrieval, which
+is believed to be enough to support most public APIs, while preventing potential abuse or attacks.
+
+## Specification
+
+### Handling of redirects messages
+
+**(1)** Redirect messages with HTTP response status codes `301`, `302`, `303`, `307`, `308` MUST be honored just as
+expected for an HTTP client, by resending the request to the address specified in the `Location` header of the
+redirect message.
+
+**(2)** Redirect messages with other HTTP response status codes, or not containing the `Location` header, MUST be
+handled as an `HttpOther` error.
+
+### Limit on redirects
+
+**(3)** For each original HTTP request, only 4 redirects are allowed.
+
+**(4)** If the 4-redirects limit is reached, a 5th redirect MUST be handled as an `HttpOther` error.
+
+## Backwards compatibility
+
+- Implementer: a client that implements or adopts the protocol improvements proposed in this document.
+- Non-implementer: a client that fails to or refuses to implement the protocol improvements proposed in this document.
+
+
+#### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions considered valid by former versions of the protocol MUST continue to be considered valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with
+those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when resolving oracle queries.
+
+As a result:
+
+- Commitments and reveals signed by non-implementers MAY differ from those signed by implementers.
+- Oracle queries MAY resolve to `InsufficientConsensus` given a witnessing committee formed by a mixed sample of
+implementers and non-implementers.
+
+Due to these last points, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be
+proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+
+### Libraries, clients, and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing any functionality related to
+the retrieval part of the RAD engine.
+
+## Reference Implementation
+
+A reference implementation for the proposed protocol improvement can be found in the
+[pull request #2308](https://github.com/witnet/witnet-rust/pull/2308) of the [witnet-rust] repository.
+
+## Adoption Plan
+
+An activation date and [TAPI] signaling bit will be opportunely proposed upon moving this draft to the Proposed stage.
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+Special thanks to @tmpolaczyk for contributing to the reference implementation in Rust.
+
+[witnet-rust]: https://github.com/witnet/witnet-rust/
+[TAPI]: wip-0014.md
