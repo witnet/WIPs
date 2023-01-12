@@ -112,13 +112,14 @@ lesser of this constant and another `safe_utxo_age` computed value MUST be used 
 
 ```rust
 /* RUST-ALIKE PSEUDOCODE */
-let utxo_is_old_enough = now - utxo.timestamp >= std::cmp::min(UTXO_AGE_REQUIREMENT, safe_utxo_age); 
+let utxo_is_old_enough = now - utxo.timestamp >= std::cmp::min(UTXO_AGE_REQUIREMENT, safe_utxo_age);
 ```
 
 **(3)** A new `SAFE_UTXOS_COUNT` protocol-level consensus constant is introduced, and set to `2_000`.
 
-**(4)** `safe_utxo_age` MUST be computed as the age of the freshest UTXO among the `SAFE_UTXOS_COUNT` oldest UTXOs
-owned by identities that have a non-zero reputation and are active (i.e. reputed ARS members).
+**(4)** `safe_utxo_age` MUST be computed as the age of the freshest UTXO among the `SAFE_UTXOS_COUNT` oldest
+collateralizable UTXOs (>1 Wit) that are owned by identities that have a non-zero reputation and are active (i.e.
+reputed ARS members).
 
 **(5)** A new `SAFE_UTXOS_RETARGET_PERIOD` protocol-level consensus constant is introduced, and set to `2_400`.
 
@@ -131,7 +132,7 @@ if current_epoch % 2_400 == 0 {
   let safe_utxo_age = current_epoch - ars
       .iter()
       .filter_map(|identity| if identity.reputation > 0 {
-        Some(identity.utxos)
+        Some(identity.utxos.filter(|utxo| utxo.value > 1_000_000_000))
       } else {
         None
       })
