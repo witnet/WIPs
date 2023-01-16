@@ -26,8 +26,8 @@ lock a certain amount of Wit coins upon publishing their commitment transaction.
 filters in the eventual _tally_ of the request, they get the collateralized coins back. If they do not pass the filters
 (aka _liars_), they lose the collateralized coins.
 
-To use a transaction output (_UTXO_) as collateral, it must have existed for more than 2,000 epochs (25 hours). We often
-call this the _UTXO age requirement_.
+To use a transaction output (_UTXO_) as collateral, it must have existed for more than 1,000 epochs (12.5 hours). We
+often call this the _UTXO age requirement_.
 
 Its current value was set in the Witnet testnet times (2019) and was never adjusted to the mainnet reality.
 
