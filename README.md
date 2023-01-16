@@ -34,6 +34,7 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [23](wip-0023.md) | Consensus (hard fork) | Burn slashed collateral | [drcpu](https://github.com/drcpu-github) | Standards Track | Draft |
 | [24](wip-0024.md) | Consensus (hard fork) | Improved processing of numbers in oracle queries | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
 | [25](wip-0025.md) | Consensus (hard fork) | HTTP redirects in retrievals | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
+| [26](wip-0026.md) | Consensus (hard fork) | Introduce new EncodeReveal RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Draft |
 
 ## TAPI signals
 
