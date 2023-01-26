@@ -60,7 +60,7 @@ secure more TVL on its dozens of supported chains, we need to improve the econom
 of value that node operators put into securing the network. In a decentralized oracle protocol like Witnet, any
 economic improvement is also a security improvement.
 
-### Considered solutions
+### Considered and alternative solutions
 
 Arguably, we could advocate for raising the minimum collateral amount. In theory, if we make it 100 Wit instead of 1
 Wit, we could increase the total staked amount of Wit tokens (our own TVL, let's say) by the same factor. However, as
@@ -91,9 +91,12 @@ node operator.
 Another consideration when increasing the UTXO age requirement is the potential disruption to the the oracle quality
 of service of the network that could happen right after activation of the increased requirement. If not enough nodes
 in the network happen to meet the new requirements at that time, a number of oracle requests may go unresolved and just
-get an `InsufficientCommit` error in their tally transactions. Moreover, this situation can also happen at any later
-time. Special countermeasures are specified in this proposal to guarantee a smooth transition and to protect from a
-generalized _everyone-is-lacking-collateral-age_ situation in the system.
+get an `InsufficientCommit` error in their tally transactions.
+
+Although mechanisms for smoothly transitioning into a longer UTXO age requirement were taken into consideration, they
+were ruled out for being overly complex, and a further analysis on the composition of the UTXO set proved that such
+measures would be useless in practice, given the enormous headroom in terms of available old-enough collateralizable
+value that rests in UTXOs controlled by frequent ARS members with non-zero reputation.
 
 ## Specification
 
@@ -102,46 +105,6 @@ generalized _everyone-is-lacking-collateral-age_ situation in the system.
 **(1)** The UTXO age consensus constant MUST be increased to `13_440` epochs. That is, for an unspent transaction
 output to be accepted as a collateral input in a commitment transaction, it MUST exist for at least 1 week prior to
 acceptance of such commitment transaction into a block in the chain.
-
-### Adaptive UTXO age requirement
-
-To address any _everyone-is-lacking-collateral-age_ situation, the following changes are introduced: 
-
-**(2)** Instead of applying the UTXO age consensus constant directly as a fixed value for the UTXO age requirement, the
-lesser of this constant and another `safe_utxo_age` computed value MUST be used as the requirement.
-
-```rust
-/* RUST-ALIKE PSEUDOCODE */
-let utxo_is_old_enough = now - utxo.timestamp >= std::cmp::min(UTXO_AGE_REQUIREMENT, safe_utxo_age);
-```
-
-**(3)** A new `SAFE_UTXOS_COUNT` protocol-level consensus constant is introduced, and set to `2_000`.
-
-**(4)** `safe_utxo_age` MUST be computed as the age of the freshest UTXO among the `SAFE_UTXOS_COUNT` oldest
-collateralizable UTXOs (>1 Wit) that are owned by identities that have a non-zero reputation and are active (i.e.
-reputed ARS members).
-
-**(5)** A new `SAFE_UTXOS_RETARGET_PERIOD` protocol-level consensus constant is introduced, and set to `2_400`.
-
-**(6)** `safe_utxo_age` MUST be updated only at the beginning of epochs that are multiples of
-`SAFE_UTXOS_RETARGET_PERIOD` (i.e. every 30 minutes). It MUST NOT be updated at any other time.
-
-```rust
-/* RUST-ALIKE PSEUDOCODE */
-if current_epoch % 2_400 == 0 {
-  let safe_utxo_age = current_epoch - ars
-      .iter()
-      .filter_map(|identity| if identity.reputation > 0 {
-        Some(identity.utxos.filter(|utxo| utxo.value > 1_000_000_000))
-      } else {
-        None
-      })
-      .flatten()
-      .take(SAFE_UTXOS_COUNT)
-      .max_by_key(|utxo| utxo.epoch)
-      .epoch;
-}
-```
 
 ## Backwards compatibility
 
