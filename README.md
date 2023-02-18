@@ -30,12 +30,12 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [19](wip-0019.md) | Consensus (hard fork) | Random Number Generation (RNG) functionality | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [20](wip-0020.md) | Consensus (hard fork) | Support HTTP-POST in RADON | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
 | [21](wip-0021.md) | Consensus (hard fork) | Add StringParseXMLMap to RADON operators | [Luis Rubio](https://github.com/lrubiorod) | Standards Track | Final |
-| [22](wip-0022.md) | Consensus (hard fork) | Data request reward collateral ratio | [drcpu](https://github.com/drcpu-github) | Standards Track | Draft |
-| [23](wip-0023.md) | Consensus (hard fork) | Burn slashed collateral | [drcpu](https://github.com/drcpu-github) | Standards Track | Draft |
-| [24](wip-0024.md) | Consensus (hard fork) | Improved processing of numbers in oracle queries | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
-| [25](wip-0025.md) | Consensus (hard fork) | HTTP redirects in retrievals | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
-| [26](wip-0026.md) | Consensus (hard fork) | Introduce new EncodeReveal RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Draft |
-| [27](wip-0027.md) | Consensus (hard fork) | Increase the age requirement for using transaction outputs as collateral | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Draft |
+| [22](wip-0022.md) | Consensus (hard fork) | Data request reward collateral ratio | [drcpu](https://github.com/drcpu-github) | Standards Track | Proposed |
+| [23](wip-0023.md) | Consensus (hard fork) | Burn slashed collateral | [drcpu](https://github.com/drcpu-github) | Standards Track | Proposed |
+| [24](wip-0024.md) | Consensus (hard fork) | Improved processing of numbers in oracle queries | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
+| [25](wip-0025.md) | Consensus (hard fork) | HTTP redirects in retrievals | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
+| [26](wip-0026.md) | Consensus (hard fork) | Introduce new EncodeReveal RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Proposed |
+| [27](wip-0027.md) | Consensus (hard fork) | Increase the age requirement for using transaction outputs as collateral | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Proposed |
 
 ## TAPI signals
 
@@ -47,6 +47,12 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 | 0            | [14](wip-0014.md), [16](wip-0016.md)                    | `522240`              | `In force`  |
 | 1            | [17](wip-0017.md), [18](wip-0018.md), [19](wip-0019.md) | `656640`              | `In force`  |
 | 2            | [20](wip-0020.md), [21](wip-0021.md)                    | `1032960`             | `In force`  |
+| 3            | [22](wip-0022.md)                                       | `1651280`             | `Signaling` |
+| 4            | [23](wip-0023.md)                                       | `1651280`             | `Signaling` |
+| 5            | [24](wip-0024.md)                                       | `1651280`             | `Signaling` |
+| 6            | [25](wip-0025.md)                                       | `1651280`             | `Signaling` |
+| 7            | [26](wip-0026.md)                                       | `1651280`             | `Signaling` |
+| 8            | [27](wip-0027.md)                                       | `1651280`             | `Signaling` |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
