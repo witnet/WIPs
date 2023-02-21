@@ -47,12 +47,12 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 | 0            | [14](wip-0014.md), [16](wip-0016.md)                    | `522240`              | `In force`  |
 | 1            | [17](wip-0017.md), [18](wip-0018.md), [19](wip-0019.md) | `656640`              | `In force`  |
 | 2            | [20](wip-0020.md), [21](wip-0021.md)                    | `1032960`             | `In force`  |
-| 3            | [22](wip-0022.md)                                       | `1651280`             | `Signaling` |
-| 4            | [23](wip-0023.md)                                       | `1651280`             | `Signaling` |
-| 5            | [24](wip-0024.md)                                       | `1651280`             | `Signaling` |
-| 6            | [25](wip-0025.md)                                       | `1651280`             | `Signaling` |
-| 7            | [26](wip-0026.md)                                       | `1651280`             | `Signaling` |
-| 8            | [27](wip-0027.md)                                       | `1651280`             | `Signaling` |
+| 3            | [22](wip-0022.md)                                       | `1655120`             | `Signaling` |
+| 4            | [23](wip-0023.md)                                       | `1655120`             | `Signaling` |
+| 5            | [24](wip-0024.md)                                       | `1655120`             | `Signaling` |
+| 6            | [25](wip-0025.md)                                       | `1655120`             | `Signaling` |
+| 7            | [26](wip-0026.md)                                       | `1655120`             | `Signaling` |
+| 8            | [27](wip-0027.md)                                       | `1655120`             | `Signaling` |
 
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
