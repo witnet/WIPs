@@ -1,0 +1,806 @@
+<pre>
+  WIP: DRAFT-AESEDEPECE-POS
+  Layer: Consensus (hard fork)
+  Title: Proof-of-Stake consensus algorithm
+  Authors: Adán SDPC
+  Discussions-To: `#dev-lounge` channel on Witnet Community's Discord server
+  Status: Draft
+  Type: Standards Track
+  Created: 2023-06-19
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+This proposal introduces a simple Proof-of-Stake consensus algorithm as a replacement for the existing RandPoE / 
+RepPoE eligibility mechanisms.
+
+## Motivation and rationale
+
+### Current status
+
+Witnet currently uses a dual mechanism for computing eligibility and network power. That is, for any given Witnet node,
+its ability to propose blocks and its ability to resolve oracle queries are determined using a different set of rules.
+
+#### Block proposing
+
+In the case of block proposing (aka _mining_), the mechanism is known as Random Proof of Eligibility ([RandPoE]). 
+Roughly speaking, this algorithm gives all identities an equal chance of becoming eligible to propose a block 
+candidate.
+
+As per WIP-0012, block proposing eligibility is computed as:
+
+```rust
+// `rf` is the replication factor, i.e. how many candidate blocks we want to target
+let eligibility = 1 / max(ars_size, minimum_difficulty) * rf;
+```
+Given a number of block candidates, those are prioritized for consolidation based on its signer's presence in the 
+Active Reputation Set (ARS) and other criteria. Ever since RandPoE was introduced by the
+[2017 Witnet whitepaper][whitepaper], the specific rules for block prioritization have been upgraded in [WIP-0009] and
+[WIP-0012] to improve the stability and fairness of the network.
+
+Long story short, the prioritization rules account for:
+1. VRF sections as described in [RandPoE].
+2. Non-zero reputation vs. zero reputation.
+3. Presence in the ARS.
+4. Lowest VRF value in the proof of eligibility.
+5. Lowest block hash.
+
+Due to the stochastic nature of this eligibility mechanism based on random sortition, it is to be expected that for a
+non-negligible percentage of protocol epochs there will be no block candidate coming from an identity with reputation or
+ARS presence. This rate has been estimated to be around 5%, i.e. once every 20 epochs, the consolidated block will
+potentially come from an identity that is completely new to the system, provided that there are enough newcomers trying
+to join the network.
+
+#### Witnessing
+
+Witnessing is the ability of participating in resolving a particular oracle query. The algorithm for computing
+eligibility for witnessing is known as Reputation-based Proof of Eligibility ([RepPoE]).
+
+In RepPoE, as its name suggests, the reputation score of an identity plays a key role in determining its eligibility.
+In its primitive form as introduced in the [2017 Witnet whitepaper][whitepaper], it makes witnessing eligibility
+directly proportional to reputation score. However, a number of [other factors][WIP-0016] have been introduced over time
+in an attempt to mitigate attack vectors and abuse.
+
+A complete description of the current RepPoE implementation can be found in [WIP-0016]. In regards to this proposal, and
+for the sake of simplicity, we can assume that RepPoE is perfectly lineal:
+
+```rust
+// `rf` is the replication factor, i.e. how many witnesses is the requester targeting
+let eligibility = own_reputation / total_reputation * rf;
+```
+
+Because it is up to miners to each subsequent miner to decide which commitment transactions to include into their block
+candidates, no priority rules are enforced on commitments. 
+
+#### Staking
+
+The Witnet protocol arguably sports a soft form of staking known as _collateralization_. Collateralization of witnessing
+activity—as introduced by [WIP-0002]—limits the ability for a node operator to operate an unbounded number of identities
+in an attempt to tamper with the result of an oracle query.
+
+That is, identities are required to lock a small amount of coins (aka _collateral_) in their commitment transactions,
+and those coins can only be reused for collateralization if they have been at rest at the same address for at least 1
+week as per [WIP-0027].  
+
+Because the coins that are available for collateralization in one identity's address are not available for a different
+identity, there is an opportunity cost to committing, and some degree of Sybil resistance and resilience to [bribery
+attacks][bribery] is achieved at the witnessing level.
+
+In this way, if you wanted to operate millions of identities and deposit enough coins in all of them to satisfy the
+collateral requirements of virtually all oracle queries, you would in theory need to acquire more coins than the entire
+circulating supply, provided that the collateral requirements are high enough.
+
+### Problem statement
+
+#### Block proposing can be abused
+
+Several observations during the 3 years that the Witnet network has been operating suggest that, judging from the number
+of block candidates that we can see flooding the network, at any given time there can be dozens of thousands of fresh
+identities trying to join the system[^1].
+
+Because it is not credible that those figures faithfully represent new node operators, it is assumed that some players
+are running thousands of identities off the same hardware, either by cramming numerous instances of the node software
+into a single VPS, or by running custom versions of the node software that calculate eligibilities for thousands of
+identities while only keeping a single instance of the chain state.
+
+This multi-identity or _sock puppet_ behavior goes clearly against the original design goals of the RandPoE algorithm.
+But its most serious negative effect is that it especially harms the profitability of more casual node operators who
+only run 1 or 2 nodes.
+
+It is not confirmed whether this multi-identity behavior has an impact on witnessing, provided that computing the
+witnessing eligibility for each combination of identity and oracle query can prove to be very costly, and that
+witnessing rewards are negligible when compared to mining rewards. Moreover, the Sybil resistance properties
+provided by collateralization of witnessing actually work against this being feasible or profitable at scale.
+
+#### Late blocks are dangerous
+
+Another phenomenon that has been observed in the Witnet network to a greater or lesser degree is the what is often
+referred as _late blocks_. These late blocks are block candidates with extraordinarily low VRF values that are broadcast
+to the network just before an epoch is finished.
+
+The fact that those block candidates have extraordinarily VRF values suggest that those node operators who modified the
+mining software to operate thousands of identities may be trying to spend as much time of each epoch and as many CPU
+cycles as they can avail to find better mining eligibility proofs than they have broadcast before.
+
+These late blocks can pose indeed a serious threat to network availability. If a block candidate with a winning VRF is
+broadcast right before the end of an epoch, chances are that it will only reach a minority of the network before the
+epoch is over, and will therefore cause a fork between those who got it in time, and those who did not. If in that short
+time span the late block reached less than 1/3rd of the network, the superblock voting mechanism should still achieve
+the required 2/3rds threshold vote, and the network will continue operating normally, with the nodes that accepted the
+late block having to roll back their local chain state once they realize that they ended up in a minority fork. On the
+contrary, may a late block reach between 1/3rd and 2/3rds of the network, it will unavoidably cause a generalized fork,
+and the network will eventually resort to the consensus recovery mechanisms.
+
+Historically, it is believed that late blocks were the main cause of the many chain rollbacks that took place especially
+during 2021, as well some other isolated later incidents.
+
+#### Reputation is not that effective
+
+Reputation was first introduced by the [2017 Witnet whitepaper][whitepaper] as a way to further incentivize nodes to
+behave honestly on the long term. That is, by committing values similar to other witnesses when resolving oracle
+queries, their reputation score increases, which makes them more likely to be eligible again to resolve further queries,
+which in turn can have a positive impact in their rewards. At the same time, this has the effect of relying more on the
+most reputed witnesses (actually, the most reliable ones) in a try to protect data integrity.
+
+However, evidence shows that the current reputation scheme is overly random and noisy. That is, because identities win
+and lose their reputation score in very abrupt and unpredictable ways, reputation is a very poor metric of reliability.
+The many downsides and challenges of the current reputation system have been discussed at length by the community of
+developers and miners, and [proposals][reputation] on how to improve it remain open.
+
+In particular, and in relation to the topic of this proposal, reputation is a strongly centralizing force. Against the
+general belief that it makes the witnessing system more fair, under some circumstances it can actually have a
+centralizing effect by helping the most reputed identities stay like that for a long period in detriment of newcomers.
+
+#### Collateralization is a mild security measure 
+
+It is generally accepted that collateralization of witnessing as described before provides a certain degree of
+resistance to Sybil and bribery attacks.
+
+However, in practice, the collateral requirements of most of the oracle queries that are resolved by the network are
+ridiculously small. This means that a potential attacker who wanted to Sybil-attack the witnessing mechanism only needs
+to deposit a few coins in each of their _sock puppet_ addresses, and given a low enough coin price, the total cost of
+flipping the result of an oracle query could be less than the value that the attacker can win by manipulating a protocol
+that relies on the oracle.
+
+There are many aspects yet to explore on how to incentivize and teach requesters to ask for higher collateral
+requirements. Especially since [WIP-0022], asking for high collateral requirements has an associated cost for the
+requester, so we can still expect the requirements to be low for the foreseeable future. Beyond considering better ways
+to articulate the collateral requirements and the witnessing rewards, there is a clear need to introduce further
+protections against Sybil attacks and other threats that can scale with the size and value of the network regardless of
+the volume of oracle queries or the specific witnessing parameters.
+
+#### Collateralization is a rather ineffective way of staking
+
+Regardless of the degree of security that collateralization brings to the table, and even if the community often refers
+and compares collateralization with staking, the truth is that it misses some of the most important points of staking
+in the context of a Proof-of-Stake network.
+
+For a start, collateralization is not especially attractive to node operators, because witnessing rewards are often
+negligible, and mining eligibility is only indirectly affected by your node's witnessing performance by means of its ARS
+membership and its reputation score.
+
+Then, there is normally no point in depositing more coins in a node than the amount it will need to collateralize, as
+any amount in excess will not improve its eligibility or profitability. This is also why some node operators are
+compelled to run many nodes at once.
+
+In the current system, there is no way to estimate the APR of a node. Because rewards are highly variable and mostly
+random, it is overly complex (if possible at all) for node operators to assess their future rewards or to make an 
+informed decision on how many coins to deposit for collateral, or how many nodes to run. This makes Witnet very 
+unattractive to professional and amateur miners alike, as they cannot calculate if the rewards (if any) will make up 
+for the running costs.
+
+### Proposed solution
+
+#### Design goals
+
+This proposal aims to replace both RandPoE and RepPoE with a more "off-the-shelf" consensus algorithm that goes in line
+with most modern Proof-of-Stake protocols in the industry.
+
+The overal goal of this PoS algorithm is to bring greater security to the Witnet network and to improve its 
+cryptoeconomic soundness, with a view to being able to service protocols with higher TVLs than it can safely onboard 
+today.
+
+One key design goal in the proposed solution is to try to make the system as linear as possible, in an attempt to deter
+the multi-identity or _sock puppet_ behavior described before. That is, with this new algorithm, the most profitable
+action that a node operator can take is to stake all their coins into a single node[^2].
+
+Another design goal is simplicity. The existing algorithms (in special RepPoE) are overly convoluted and difficult to
+prove both formally and empirically. This new algorithm aims to be extremely minimalist, sticking to the lesser number
+of factors possible, and getting rid of any unproven or superfluous dynamics.
+
+It is also this proposal's aim to outline a mechanism that can be integrated into the existing code base with the
+minimum impact, and to have the smallest code footprint possible, trying to remove what is not needed anymore, and leave
+every other working part as it is.
+
+This proposal also tries to honor and double down on the [3 original design goals][goals] of the Witnet protocol: data
+integrity, fairness, and low barriers to entry.
+
+Finally, it is also a priority that the changes introduced are friendly to the existing community of node operators.
+This is to say that the user experience of running a node in this new protocol needs to be equal if not better than it
+is right now, and that the economic and technical requirements for running nodes cannot change drastically.
+
+#### Overview of the proposed changes
+
+Because this is arguably the most radical, impactful and extensive WIP document to date, it is worth making a shortlist
+of the main changes that are being introduced, to act as an index for the specification section below:
+
+- 2 new transaction types: `StakeTransaction` and `UnstakeTransaction`, with their own weights and
+reserved block space.
+- A new shared `StakesTracker` data structure that will keep track of each node's stake.
+- Concept of _power_ as the factor of stake amount and stake age.
+- Unification of the eligibility mechanism for mining and witnessing.
+- Deprecation of the reputation system, including the ARS and the TRS.
+- Removal of collateralized inputs from commitment transactions.
+- Removal of reward outputs in tally transactions.
+- Deprecation of mint transactions.
+- Sampling of superblock voters from the `StakesTracker`.
+- Introduction of relative timelocks.
+
+Because the switch from using the ARS and TRS to using the `StakesTracker` is not trivial and requires some
+bootstrapping, the process for progressively transitioning and activating the new protocol rules will be omitted in this
+document and will be further described in a subsequent WIP.
+
+## Specification
+
+### Staking protocol outline
+
+This is a high level overview of the whole workflow around staking, computing eligibility, earning rewards, and
+unstaking.
+
+- Nodes will be required to stake an amount of coins before they are allowed to propose blocks or resolve oracle
+  queries.
+- Staking is performed through a `StakeTransaction`, which consumes UTXOs and adds the staked coins to the
+  `StakesTracker`. I.e. those coins cease to exist as UTXOs.
+- Staked coins cannot be moved until they are unstaked.
+- Staked coins accrue age for every epoch they have been staked and unused, separately for different protocol 
+  capabilities (e.g. mining vs. witnessing).
+- Power is the product of total stake of a miner, and the average age of that stake, for different protocol 
+  capabilities.
+- A node's mining eligibility is roughly proportional to its mining power over the total mining network power, 
+  multiplied by a replication factor.
+- Similarly, a node's witnessing eligibility is roughly proportional to its witnessing power over the total network 
+  witnessing power, multiplied by the query's own replication factor (witnesses count), and the commitment round.
+- When proposing a block, all the mining power of the proposing node is used at once. That is, if the block ends up 
+  being consolidated, the average "mining age" of its proposer's stake is reset to zero.
+- When resolving an oracle query, only the required collateral is used. That is, the average "witnessing age" of the 
+  stake is moved forward in time proportionally to how that collateral amount compares to the amount of stake that  
+  remains unused.
+- The rewards for block mining and witnessing rewards no longer exist as UTXOs. The rewarded coins are automatically 
+  added to the staked balance of the block proposer.
+- The superblock voting committees are evenly sampled from the `StakesTracker` just as we used to do from the `ARS`.
+- At any time, stake can be withdrawn from a node, either partially or all at once, through an `UnstakeTransaction`.
+- The `UnstakingTransaction` acts as a pre-announcement for the unstaking itself, i.e. the transaction only puts the
+  address of the staker in an exiting queue, but the staker node still needs to keep voting for superblocks if required
+  to do so, and the unstaked coins are still unspendable and subject to slashing for 2 weeks (_unstaking delay period_).
+- After the 2-weeks unstaking delay period is over, the unstaked coins begin to exist again as a UTXO that becomes 
+  spendable only by the staker, and the obligation to keep voting for superblocks finally ceases.
+
+### Relative timelocks
+
+**()** Timelock values found in the `time_lock` field of a `ValueTransferOutput` MUST be processed in such a way that 
+values lesser or equal than the UNIX timestamp of the _checkpoint zero_ are treated as relative. That is, those outputs 
+affected by relative timelocks become spendable only after the amount of seconds specified as `time_lock` has passed 
+after the timestamp of the block in which the output is created.
+
+In mainnet, being the _checkpoint zero_ equal to `1_602_666_000`, the longest that an output can be time locked is for
+`1_602_666_000` seconds, which equates to approximately 50 years, 10 months and 14 days.
+
+**()** Conversely, `time_lock` values greater than the same _checkpoint zero_ MUST still be treated as absolute. That
+is, those outputs affected by absolute timelocks become spendable only after the amount of seconds specified as
+`time_lock` has passed since the 1st of January 1970.
+
+Absolute time locks are only limited by the range of the `uint64` fields used to encode them, and therefore can be set
+to any date up to July 21, 2554.
+
+### New shared data structures
+
+In the context of this document a shared data structure is a collection of data that is kept—either in memory, in
+storage, or both—by all nodes in the network in an independent manner. That is, the data contained therein is expected
+to be exactly the same for every synchronized node in the network, without a need for anchoring its final or any
+intermediate state, only by means of deriving the necessary state transitions from the content of consolidated blocks
+and transactions.
+
+Most shared data structures are part of the chain state, and as such, need to be reset to a former state when a chain
+rollback is triggered for whatever reason.
+
+#### StakesTracker
+
+**()** A new `StakesTracker` shared data structure MUST be kept by all nodes in the network, such that it follows a
+schema similar to this:
+
+```rust
+pub struct StakesTracker {
+    /// The individual stake records for all identities with a non-zero stake.
+    entries: BTreeMap<PublicKeyHash, Arc<Mutex<StakesEntry>>>,
+    /// A reverse-lookup tree that enables queries like "for X capability, give me the top Y most powerful stakers".
+    rank: BTreeSet<(Capability, u64, PublicKeyHash), Arc<Mutex<StakesEntry>>>,
+    /// The latest epoch for which there is information in the tracker.
+    pub latest_epoch: Epoch,
+}
+
+pub struct StakesEntry {
+    /// How many coins does an address have in stake.
+    coins: Wit,
+    /// The weighted average of the epochs in which the stake was updated, tracked separately for different 
+    /// protocol capabilities.
+    epochs: HashMap<Capability, Epoch>,
+    /// The only address allowed to remove stake from this entry.
+    withdrawer: PublicKeyHash,
+}
+
+#[repr(u8)]
+pub enum Capability {
+    /// The base block mining and superblock voting capability
+    Mining = 0,
+    /// The universal HTTP GET / HTTP POST / WIP-0019 RNG capability
+    Witnessing = 1,
+}
+```
+
+**()** Upon adding stake for a particular address with no formerly existing stake, a new `StakesEntry` MUST be created
+and added to the `entries` field of the `StakesTracker`, where `coins` will be the amount of coins that are being
+staked, `epoch` is the number of the current protocol epoch, and `withdrawer` is the only address that will be allowed
+to remove stake from this `StakesEntry`. This `withdrawer` address MUST be taken from the `withdrawer` field in
+`StakeOutput` as introduced later.
+
+**()** Upon adding stake for a particular address for which there is already a `StakesEntry` in `StakesTracker`, the
+entry MUST be updated in this way:
+- The former `coins` value and the newly staked amount MUST be added together and be used as the new value for `coins`.
+- All former values in `epochs` MUST be independently weight-averaged together with the current epoch, using the former 
+  `coins` value as the weight for the former epoch and the newly staked amount as the weight for the current epoch, 
+  and that weighted average MUST be used as the new value.
+
+**()** Upon inserting or updating a `StakesEntry`, and for each capability, the value of the `rank` field MUST be 
+updated in this way:
+- The entry corresponding to the key `(capability, former_power, address)` in the `rank` field MUST be removed, where
+  `capability` is the identifier of each capability, `former_power` is the staker's former power specific to that 
+  capability, and `address` is the address of the staker.
+- A new entry MUST be inserted into `rank` for each capability, using the key `(capability, new_power, address)`, where 
+  `capability` is the identifier of each capability, `new_power` is the staker's new power specific to that capability,
+  and `address` the address of the staker.
+
+**()** Upon triggering a chain rollback for any reason, `StakesEntry` MUST also be reset to its former confirmed state,
+i.e. its state as of the epoch height of the latest confirmed superblock.
+
+### Deprecated shared data structures
+
+**()** The Total Reputation Set (TRS)—which formerly acted as the main tracker for the reputation score of the
+different identities in the system—MUST be removed from the codebase, as well as any business logic, validation rules,
+etc. that used this data structure.
+
+**()** The Active Reputation Set (ARS)—which formerly acted as a tracker for identities that had recently engaged with
+the protocol and as the main census for sampling superblock voting committees—MUST be removed from the codebase, as well
+as any business logic, validation rules, etc. that used this data structure.
+
+This in practice means that the reputation system is removed altogether from the protocol, and that superblock voting
+committees will be sampled from the `StakesTracker` as described later.
+
+### New types of transactions
+
+#### StakeTransaction
+
+**()** A new type of transaction, `StakeTransaction`, MUST be introduced, following this schema:
+
+```protobuf
+message StakeTransaction {
+    StakeTransactionBody body;
+    repeated KeyedSignature signatures;
+}
+
+message StakeTransactionBody {
+    repeated Input inputs;
+    StakeOutput output;
+    ValueTransferOutput change;
+}
+
+message StakeOutput {
+    uint64 value;
+    KeyedSignature authorization;
+}
+```
+
+**()** The identifier of a `StakeTransaction` is the SHA256 hash of the Protocol Buffers serialization of its `body`.
+
+**()** For a `StakeTransaction` to be valid, it MUST contain one valid ECDSA Secp256k1 signature for each entry of
+`inputs` in its body, such that the public key as recovered from the signature matches the `PublicKeyHash` found in the
+input with the same index as the signature; and the signed message is the Protocol Buffers serialization of the
+transaction's `body`.
+
+**()** For a `StakeTransaction` to be valid, the `authorization` field MUST be a valid ECDSA Secp256k1 signature such
+that the public key as recovered from the signature will be treated as the address of the only node that will be allowed
+to use the staked coins, aka the _operator_, and the signed message is the only address (namely, 20-bytes
+`PublicKeyHash`) that will be allowed to unstake coins from the operator, aka the _withdrawer_.
+
+This `authorization` signature prevents unknown 3rd parties from delegating coins into someone else's node without their
+consent.
+
+**()** For a `StakeTransaction` to be valid, its output MUST satisfy one of these conditions:
+1. the operator address is not present in the `StakesTracker`, or
+2. the specific combination of operator address and withdrawer address has appeared in a previous `StakeTransaction`.
+
+This requirement ensures that each operator address is only nominating 1 withdrawer address. On the contrary, the same
+withdrawer address can be used by multiple operators addresses.
+
+**()** A single `ValueTransferOutput` MUST be allowed in a `StakeTransaction`, for the sake of allowing change in case
+that the amount of coins to stake is smaller than the value of the UTXOs consumed in `inputs`.
+
+**()** Only 1 `StakeTransaction` with the same `operator` MAY be allowed into a block.
+
+**()** The `value` field in the `StakeOutput` in `StakeTransaction` MUST be equal or greater than a new
+`MINIMUM_STAKE_NANOWITS` constant, initially set to `10_000_000_000_000`, i.e. 10,000 WIT coins.
+
+**()** The weight of a `StakeTransaction` MUST be computed in weight units as `N*133+M*36+105`, where `N` is the number
+of `inputs`, and `M` is 0 or 1 depending on whether a `change` output is used.
+
+As a result, the minimum weight for a `StakeTransaction` (one with a single input and no `change` output) is 238 weight
+units.
+
+#### UnstakeTransaction
+
+**()** A new type of transaction, `StakeTransaction`, MUST be introduced, following this schema:
+
+```protobuf
+message UnstakeTransaction {
+    UnstakeTransactionBody body;
+    KeyedSignature signature;
+}
+
+message UnstakeTransactionBody {
+    PublicKeyHash operator;
+    ValueTransferOutput withdrawal;
+}
+```
+
+**()** The identifier of an `UnstakeTransaction` is the SHA256 hash of the Protocol Buffers serialization of its `body`.
+
+**()** For an `UntakeTransaction` to be valid, it MUST contain one valid ECDSA Secp256k1 signature, such that the public
+key as recovered from the signature matches both the `PublicKeyHash` found as the `withdrawer` address for the
+`operator` address entry in `StakesTracker`, and the address used in the `withdrawal` output; using the Protocol
+Buffers serialization of the transaction's `body` as the signed message.
+
+**()** For an `UnstakeTransaction` to be valid, the `time_lock` field in the `withdrawal` output MUST be a relative
+timelock equal or greater than an `UNSTAKING_DELAY_SECONDS` constant initially set to `1_209_600`, i.e. 2 weeks.
+
+**()** The `value` field in the `ValueTransferOutput` in `UnstakeTransaction` MUST satisfy one of these conditions:
+1. equal the total amount of coins that the `operator` address has in stake, or
+2. remove an amount of coins such that the remaining stake is equal or greater than the `MINIMUM_STAKE_NANOWITS`
+constant.
+
+**()** The weight of an `UnstakeTransaction` MUST always equal 153 weight units.
+
+### Updated types of transactions
+
+#### CommitTransaction
+
+**()** Commitment transactions MUST no longer contain the `collateral`, `outputs`, and `bn256_public_key` fields. All
+validation rules and business logic using these pieces of data MUST be removed as well.
+
+**()** The `signatures` field in `CommitTransaction` MUST be replaced by a single `signature`. This MUST be a valid
+ECDSA Secp256k1 signature, such that the public key as recovered from the signature matches the `PublicKeyHash` found in
+`proof`; and the signed message is the Protocol Buffers serialization of the transaction's `body`.
+
+**()** The new schema for `CommitTransaction` SHOULD look like:
+
+```protobuf
+message CommitTransaction {
+    CommitTransactionBody body;
+    KeyedSignature signature;
+}
+
+message CommitTransactionBody {
+    Hash dr_pointer;
+    Hash commitment;
+    DataRequestEligibilityClaim proof;
+}
+```
+
+#### TallyTransaction
+
+**()** Tally transactions MUST no longer contain the `outputs` field. All validation rules and business logic using this
+piece of data MUST be removed as well. 
+
+**()** A new `rewarded` field MUST be added, such that it lists the addresses whose commitments and reveals were in
+consensus and will be rewarded.
+
+**()** A new `change` output MUST be added to `TallyTransaction`, which will act as a change address to which any coins
+that are not rewarded (those supposed to reward the witnesses who were not in consensus) are sent to. The value and
+address MUST be calculated as per [WIP-0002].
+
+**()** The new schema for `TallyTransaction` SHOULD look like:
+
+```protobuf
+message TallyTransaction {
+    Hash dr_pointer;
+    bytes tally;
+    repeated PublicKeyHash rewarded;
+    repeated PublicKeyHash out_of_consensus;
+    repeated PublicKeyHash error_committers;
+    ValueTransferOutput change;
+}
+```
+
+**()** For each address in `rewarded`, an amount of stake equivalent to the addition of the `reward` and `collateral`
+values in the data request pointed by `dr_pointer` MUST be added to the address' entry in the `StakesTracker`.
+
+**()** For each address in `out_of_consensus`, no operation SHALL be performed, provided that the collateral was already 
+removed upon committing.
+
+**()** For each address in `error_committers`, an amount of stake equivalent to the `collateral` value in the data
+request pointed by `dr_pointer` MUST be added to the address' entry in the `StakesTracker`.
+
+### Deprecated types of transactions
+
+#### Mint transaction
+
+**()** `MintTransaction` MUST be deprecated, and no longer used anywhere in the protocol except when verifying blocks
+older than the activation of the protocol improvements described herein. In particular, a valid block MUST not include
+any `MintTransaction`. 
+
+### Updates to blocks
+
+#### New block weight buckets
+
+**()** A valid block MAY contain a number of `StakeTransaction`s such that their combined weight MUST NOT exceed
+`10_000` weight units.
+
+That is to say that the maximum amount of `StakeTransaction`s that can be accepted into a single block is capped to 42.
+This number will be smaller in practice, as the average `StakeTransaction` is expected to include more than 1 UTXO, and
+to also include a `change` output.
+
+**()** A valid block MAY contain a number of `UnstakeTransaction`s such that their combined weight MUST NOT exceed
+`5_000` weight units.
+
+That is to say that the maximum amount of `UnstakeTransaction`s that can be accepted into a single block is capped to 32.
+
+#### Increase of the total block weight limit
+
+**()** A total of `15_000` additional weight units MUST be added to the existing block weight limit as introduced in
+[WIP-0007].
+
+#### Merkleization of transactions
+
+**()** The `BlockMerkleRoots` data structure that blocks use to include transactions of different types MUST be updated
+to remove the `mint_hash` field.
+
+**()** The `BlockMerkleRoots` data structure that blocks use to include transactions of different types MUST be updated
+to add a `stake_hash_merkle_root` field that MUST contain the Merkle root of all the `StakeTransaction`s contained in
+the block.
+
+**()** The `BlockMerkleRoots` data structure that blocks use to include transactions of different types MUST be updated
+to add a `unstake_hash_merkle_root` field that MUST contain the Merkle root of all the `UnstakeTransaction`s contained
+in the block.
+
+```rust
+pub struct BlockMerkleRootsV2 {
+    /// A 256-bit hash based on all of the value transfer transactions committed to this block
+    pub vt_hash_merkle_root: Hash,
+    /// A 256-bit hash based on all of the data request transactions committed to this block
+    pub dr_hash_merkle_root: Hash,
+    /// A 256-bit hash based on all of the commit transactions committed to this block
+    pub commit_hash_merkle_root: Hash,
+    /// A 256-bit hash based on all of the reveal transactions committed to this block
+    pub reveal_hash_merkle_root: Hash,
+    /// A 256-bit hash based on all of the tally transactions committed to this block
+    pub tally_hash_merkle_root: Hash,
+    /// A 256-bit hash based on all of the stake transactions committed to this block
+    pub stake_hash_merkle_root: Hash,
+    /// A 256-bit hash based on all of the unstake transactions committed to this block
+    pub unstake_hash_merkle_root: Hash,
+}
+```
+
+**()** The old version of the `BlockMerkleRoots` data structure MAY still be needed for validating blocks that predate
+the activation of the protocol improvements proposed herein.
+
+### Power and eligibility
+
+#### Power, coin age and capabilities
+
+Power is the main metric used in this Proof-of-Stake mechanism for computing the eligibility of a certain staker to 
+perform a particular action. Generally speaking, it is a factor of the number of staked coins, and their average age,
+i.e. how long they have been at stake and without being used.
+
+The usage of this metric instead of directly assigning stakers an eligibility that is purely proportional to the number
+of staked coins creates a non-negligible opportunity for small stakers to eventually mine or witness, provided that
+their stake accrues enough age. At the same time, it deters very big stakers from completely monopolizing the mining
+and witnessing, inasmuch it reduces the pace at which they can reuse their big stake.
+
+Eligibility is thus generally computed as the power of a staker, divided by the global power of the network (the 
+aggregate of the power of every other staker), multiplied by some replication factor that allows for redundancy.
+
+Coin age (and hence power too) are multidimensional, as coin age can be tracked, updated and reset separately for 
+different protocol capabilities. That is, a staker's power for mining can be different from their power for witnessing. 
+Therefore, we can speak of "mining power", "witnessing power" and "making breakfast power" (this last one only 
+fictionally, though).
+
+This multi-capability power independence deters potential attacks where a malicious staker might e.g. refrain from 
+witnessing with a view to let its stake accrue coin age, hoard a large amount of power, and leverage that to mine a 
+block at a particular time, or vice versa.
+
+**()** The power of an address with 0 stake MUST be exactly 0 for every capability.
+
+**()** For any capability, the power of an address with a non-zero stake MUST be computed as the smallest of:
+1. the product of its total staked coins and the average age of that stake for that capability, as registered in its 
+   own entry in `StakesTracker`, and
+2. a `MAXIMUM_POWER` constant, initially set to 1/125th of the maximum value of an unsigned 64-bit integer number, i.e.
+   `18_446_744_073_709_551_615`.
+
+**()** For any capability, the global power of the network MUST be computed as the maximum power for the same 
+capability among all the stakers.
+
+**()** All the existing capabilities and their identifiers that they will use in the `StakesTracker` MUST be listed 
+at all times in [README.md][README].
+
+**()** The initial capabilities list in [README.md][README] MUST be as follows:
+
+| **ID** | **Capability**                         |
+|--------|----------------------------------------|
+| 0      | Block proposing and superblock signing |
+| 1      | Witnessing                             |
+
+#### Mining eligibility
+
+**()** For a block candidate to be considered for validation, prioritization and consolidation, it MUST hold an 
+amount of mining power and provide a valid VRF proof that MUST satisfy all the following requirements:
+1. the VRF input is the concatenation of the previous block hash and the current epoch, both in big-endian format,
+2. the mining power of the block proposer is in the `rf / stakers`th quantile among the mining powers of all the 
+   stakers, and
+3. the mining power of the block proposer is greater than `max_power / rf`.
+
+Where:
+- `rf` is a replication factor that tries to target a certain number of block candidates,
+- `stakers` is the number of stakers in the `StakesTracker`, and
+- `max_power` is the mining power of the most mining-powerful staker.
+
+**()** The `rf` replication factor for block candidates redundancy MUST be initially set to `4`.
+
+**()** May a node receive and successfully validate multiple concurrent block candidates with distinct block hashes for 
+the same epoch, it MUST consolidate the one that comes out as the winner after prioritizing them using the following 
+criteria:
+
+1. Select the block candidate whose proposer has the highest mining power,
+2. If 2 or more block candidates were proposed by stakers with the same mining power, select the block candidate whose 
+   VRF output has the lowest big-endian value, and
+3. If 2 or more block candidates were proposed by stakers with the same mining power, and every of those block 
+   candidates have the same VRF output, select the one whose block hash has the lowest big-endian value.
+
+**()** Upon consolidating a block candidate, the amount of coins in the proposer's entry in the `StakesTracker` MUST be 
+incremented by an amount equivalent to the block reward, plus the addition of all unclaimed value from the transactions 
+contained in the block, i.e. the miner fees.
+
+**()** Upon consolidating a block candidate, the average age of the proposer's witnessing entry in the `StakesTracker` 
+MUST be reset to zero, i.e. the average epoch MUST be set to the same epoch as the one for which the block was 
+consolidated.
+
+#### Witnessing eligibility
+
+**()** For any given data request transaction in the commitment stage, a replication factor `rf` MUST be computed as
+the `witnesses` field in the data request multiplied by 2 to the power of the current witnessing round:
+
+`rf = witnesses * 2 ^ round`
+
+**()** For a commitment transaction to be considered for inclusion in a block, it MUST hold an amount of witnessing
+power and provide a valid VRF proof that MUST satisfy all the following requirements:
+1. the VRF input is the concatenation of the previous block hash, the data request hash, and the current epoch, all 
+   of them in big-endian format,
+2. the witnessing power of the block proposer is in the `rf / stakers`th quantile among the witnessing powers of all 
+   the stakers, and
+3. the big-endian value of the VRF output is less than `max_rounds * own_power / (max_power * (rf - max_rounds) - rf * 
+   threshold_power)`,
+
+Where:
+- `rf` is the replication factor,
+- `stakers` is the number of stakers in the `StakesTracker`,
+- `max_rounds` is the maximum number of commitment rounds allowed by the protocol (currently `4`),
+- `own_power` is the witnessing power of the committer,
+- `max_power` is the witnessing power of the most witnessing-powerful staker, and
+- `threshold_power` is the witnessing power of the least witnessing-powerful staker within the `rf/stakers`th quantile 
+  from requirement 2 above.
+
+Thanks to the `rank` field in `StakesTracker`, `max_power` and `threshold_power` can be easily obtained without 
+performing expensive iterative operations or sorting the whole `entries` field, by simply obtaining a double-ended range
+iterator within the range `(Capability::Witnessing, IndexedPower::MIN, PublicKeyHash::MIN)..=(Capability::Witnessing,
+IndexedPower::MAX, PublicKeyHash::MAX)` and reversing it, so the witnessing power of the first item yielded from the 
+reversed iterator becomes `max_power`, and the witnessing power of the item yielded at position `rf` from the same 
+reversed iterator (or the last yielded item, if the iterator contains less than `rf` items) becomes `threshold_power`.
+
+**()** May a node receive and successfully validate a number of concurrent commitments with distinct transaction hashes
+for the same data request and epoch greater than the value of the `witnesses` field in the data request, it SHOULD 
+prioritize for inclusion in an eventual block candidate those commitments whose VRF output have the lowest big-endian 
+value.
+
+**()** Upon consolidating a block candidate, for each of the commitment transactions contained therein, the amount of
+coins in each committer's stake entry in the `StakesTracker` MUST be decremented by an amount equivalent to the 
+`collateral` value in the data request pointed by `dr_pointer`.
+
+### Sampling of superblock voting committees
+
+After the removal of the Active Reputation Set, there is a need to sample the superblock voting committees from a
+different shared data structure. This is the perfect case for the `StakesTracker`.
+
+**()** At the beginning of each superblock period (namely, every time that the current epoch is a multiple of 10), a new
+superblock voting committee MUST be sampled from the list of stakers found in the `StakesTracker`.
+
+**()** The rules for determining the number of addresses in the superblock voting committee MUST remain unchanged.
+
+**()** The algorithm for determining which identities will belong in the superblock voting committee for a certain 
+superblock index MUST be:
+
+```rust
+let gap: uint64 = stakers_count / committee_size;
+let belongs: bool = staker_index % gap == superblock_index % gap;
+```
+
+Where:
+- `stakers_count` is the number of staker addresses contained in `StakesTracker`.
+- `committee_size` is the target size of the superblock voting committee.
+- `staker_index` is the position of a particular staker in the `StakesTracker`, being all entries ordered alphabetically
+by their address.
+- `%` is the modulo operator (remainder of a division).
+- `superblock_index` is the serial number of the superblock for which we are drawing a voting committee.
+
+## Backwards compatibility
+
+### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered 
+  valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with
+  those coming from implementers, that is, the new rules.
+
+As a result:
+
+- Non-implementers MAY NOT get their blocks and transactions accepted by implementers.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to this last point, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be
+proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+### Libraries, clients, and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing the core Witnet block chain
+protocol, especially block validation rules, transaction validation rules, and superblock consensus.
+
+## Reference Implementation
+
+TBD
+
+## Adoption Plan
+
+TBD
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+In particular, there have been a number of significant contributions from @guidiaz and @drcpu-github.
+
+[README]: README.md
+[whitepaper]: https://witnet.io/witnet-whitepaper.pdf
+[RandPoE]: https://github.com/witnet/research/blob/master/reputation/docs/randpoe.md
+[RepPoE]: wip-0016.md#current-implementation-of-reputation-based-proof-of-eligibility-reppoe
+[WIP-0002]: wip-0002.md
+[WIP-0007]: wip-0007.md
+[WIP-0009]: wip-0009.md
+[WIP-0012]: wip-0012.md
+[WIP-0016]: wip-0016.md
+[WIP-0022]: wip-0022.md
+[WIP-0027]: wip-0027.md
+[TAPI]: wip-0014.md
+[bribery]: https://medium.com/witnet/deterring-bribery-attacks-on-decentralized-oracle-networks-5bcf87d2cb22
+[reputation]: https://github.com/witnet/witnet-rust/discussions/2271
+[goals]: https://medium.com/witnet/designing-a-decentralized-oracle-network-cad5c5855ba2
+
+[^1]: At any point in time, the mining difficulty is roughly the inverse of the size of the ARS divided by the mining
+replication factor. Therefore, under the assumption that the ARS represents the size of the network, the average
+number of block candidates needs to be at most the value of the replication factor. Because the mentioned observations
+have registered dozens of times the expected amount of candidates, it is proven that the real number of identities in 
+the network is at least that times the size of the ARS.
+[^2]: In practice, it is to be expected that node operators split their stake into a handful of nodes across multiple
+VPS providers or networks, with a view to mitigate the risk of losing a big part of their stake due to slashing, may one
+of those nodes fail for whatever reason. 
