@@ -3,7 +3,7 @@
   Layer: Consensus (hard fork)
   Title: Extended rules for improved handling of RADON errors in smart contracts.
   Authors: guidiaz
-  Discussions-To: `#dev-lounge` channel on Witnet Community's Discord server
+  Discussions-To: https://github.com/witnet/witnet-rust/discussions/2430
   Status: Draft
   Type: Standards Track
   Created: 2024-01-22
@@ -96,6 +96,7 @@ Starting from and including the activation epoch:
 - **`RadonErrors::CircumstantialFailure`** from:
   - `RadError::ArrayIndexOutOfBounds`
   - `RadError::CircumstantialFailure` *(as for propagating a majority of reveal reports into a Tally report)*
+  - `RadError::HttpOther`
   - `RadError::HttpStatus`
   - `RadError::MapKeyNotFound`
   - `RadError::ModeTie` *(if generated on Aggregate stage)*
@@ -113,7 +114,6 @@ Starting from and including the activation epoch:
 - **`RadonErrors::MalformedDataRequest`** from:
   - `RadError::ArrayFilterWrongSubscript`
   - `RadError::BadSubscriptFormat`
-  - `RadError::HttpOther`
   - `RadError::InvalidHttpBody`
   - `RadError::InvalidHttpHeader`
   - `RadError::InvalidScript`
@@ -321,7 +321,7 @@ protocol, especially block validation rules, transaction validation rules, and s
 
 ## Reference Implementation
 
-A reference implementation for the proposed protocol improvement can be found in the extended-radon-errors branch of the [witnet-rust] repository.
+A reference implementation for the proposed protocol improvement can be found in the [extended-radon-errors](https://github.com/witnet/witnet-rust/pull/2425) branch of the [witnet-rust] repository.
 
 ## Adoption Plan
 
