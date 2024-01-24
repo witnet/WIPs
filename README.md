@@ -36,6 +36,7 @@ Having a WIP here does not make it a formally accepted standard until its status
 | [25](wip-0025.md) | Consensus (hard fork) | HTTP redirects in retrievals | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 | [26](wip-0026.md) | Consensus (hard fork) | Introduce new EncodeReveal RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
 | [27](wip-0027.md) | Consensus (hard fork) | Increase the age requirement for using transaction outputs as collateral | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [28](draft-guidiaz-extened-radon-errors.md) | Consensus (hard fork) | Extended rules for improved handling of RADON errors in smart contracts | [Guillermo Díaz](https://github.com/guidiaz) | Standards Track | Draft |
 
 ## TAPI signals
 
