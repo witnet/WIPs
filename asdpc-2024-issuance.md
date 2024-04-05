@@ -1,0 +1,168 @@
+<pre>
+  WIP: asdpc-2024-issuance
+  Layer: Consensus (hard fork)
+  Title: A sustainable coin issuance schedule for the early wit/2 era
+  Authors: Adán SDPC <adan@witnet.foundation>
+  Discussions-To: `#dev-lounge` channel on Witnet Community's Discord server
+  Status: Final
+  Type: Standards Track
+  Created: 2022-10-26
+  License: BSD-2-Clause
+</pre>
+
+
+## Abstract
+
+This proposal suggests modifications to the coin issuance schedule and block time within the Witnet protocol.
+The proposed changes aim to enhance network efficiency, sustainability, and incentivization, particularly in
+anticipation of the transition to Proof of Stake in wit/2.
+The key adjustments include adjusting the block rewards, banning halvings and reducing the block time, aka _epoch 
+period_.
+
+## Motivation and rationale
+
+### Current status and problem statement
+
+At present, Witnet operates on a fixed block reward model introduced by [WIP-0003], where a constant amount of 250 
+wit is newly _minted_ by miners on each block that gets appended to the chain. With a block time of 45 seconds, this 
+amounts to a yearly issuance of more than 175 million Wit coins. As of the publication of this document, this 
+translates to an annual inflation rate of approximately 13%.
+
+A key feature in the current block reward model is _halvings_. Every 5 years since the inception of the Witnet mainnet,
+block rewards are scheduled to go down by 50%. That is, rewards would go from 250 Wit a block down to 125 Wit in
+October 2025, then to 62.5 in October 2030, and so on.
+
+While the high inflation rate provided by this model has facilitated network operations and incentivized participation,
+it is facing important challenges as the ecosystem evolves. Notably, the impending transition to Proof of Stake in 
+wit/2 calls for a reassessment of the coin issuance schedule to align with the new consensus algorithm.
+
+Namely, the drastic reduction in block rewards over time due to halving events may lead to significant fluctuations in 
+miner incentives and network security. That is, in the event of a halving, any yield that block validators may 
+eventually receive would half as well, making the validator activity less attractive, and introducing the potential 
+risk of a simultaneous exit of a big percentage of the block validators, which may jeopardize the security of the 
+network.
+
+Moreover, the inflation rate in a halving model like this approaches zero asymptotically over time. This is clearly 
+undesirable in the context of Proof of Stake, as the rewards that block validators can expect also approaches zero. 
+Because Proof of Stake requires no specialized hardware, validators find a very low barrier in withdrawing their 
+stake and relocating their funds into a different protocol that may allow them to earn more attractive rewards. 
+In other words, a Proof of Stake network and its security can only be sustainable if the inflation is guaranteed to 
+never go below a certain threshold, which in its simplest form translates to making the block rewards grow linearly
+with the total supply of the coin in which the rewards are denominated.
+
+At the same time, while the 45-block time introduced by [WIP-0003] has been proven to be sufficient for allowing the 
+network to propagate protocol messages and maintain consensus effectively, there has been a constant demand from the 
+users of the oracle for shorter latency.
+
+Because the transactions that are involved in the process of commitment, reveal and tally of oracle queries require
+confirmation by inclusion in a block, in the best scenario, the time-to-resolution of an oracle query can be no less 
+than the time that it takes to append 4 blocks to the tip of the chain (1 for publishing the query itself, 1 for 
+commitments, 1 for reveals, and finally 1 for the tally).
+
+With a block time of 45 seconds, those 4 blocks equal to 3 minutes. While this latency may be perfectly fine for many
+use cases, there are some of those in which the freshness of the data being attested is key. Any reduction to this 
+latency—even if marginal—can make a big difference to them.
+
+### Considered and alternative solutions
+
+[WIP-0003] itself explores several alternative coin emission schedules. However, they are all based on the same 
+Bitcoin-like model with asymptotic inflation and halvings.
+
+The discussion on improving the coin emission schedule has been going on for many years, but the matter started to 
+receive more attention as soon as Proof of Stake started to shape up as the consensus algorithm for wit/2.
+
+Over the last year, other proposals like reducing the block rewards in shorter periods and milder installments have 
+been brought to the table, but the issue of the asymptotic convergence to zero of the inflation was not addressed by 
+them.
+
+During the process of drafting this document, several issuance schedules focusing on modulating and eventually fixing
+the inflation instead of the quantity of the block rewards were explored. These looked very promising for 
+fulfilling the goal of long term sustainability. However, we found that the balance between providing attractive 
+incentives for validators and keeping the total coin supply contained needs to be adjusted very carefully. Therefore,
+we reached the conclusion that an eventual transition to a fixed inflation schedule—while still strictly needed—will 
+require further examination of the reality of the network and the distribution of stake once wit/2 is rolled out.
+
+On the subject of the block time, aka _epoch period_, there have not been any significant discussions on the community 
+channels lately. However, several past and recent experiments performed by node operators and relevant contributors to 
+the design and development of the protocol have shown that a block time shorter than 15 seconds can jeopardize the 
+stability of the network, but a 20-30 seconds block time allows the protocol to perform just as well as with the current
+45 seconds block time.
+
+## Specification
+
+### Calculation of block rewards
+
+**()** The block reward MUST NOT be calculated any longer using the old function that computed it for every block based 
+on an initial reward, the current protocol epoch, and a halving period.
+
+**()** The block reward MUST be fixed to `125` Wit.
+
+### Reduction of the epochs period
+
+**()** The epochs period MUST be `22.5` seconds. That is, a protocol checkpoint MUST happen every `22.5` seconds.
+
+**()** The superblock period MUST be `225` seconds. That is, it remains stable at `10` epochs.
+
+**()** All other sub-epoch and super-epoch constants found in an implementation of the protocol MUST be updated 
+in the same way so that they are adjusted proportionally.
+
+**()** All the scheduled halvings of block rewards MUST be cancelled.
+
+### Confirmation or revocation of these changes
+
+**()** Within 1 year from the entry into force of these changes, a subsequent Witnet Improvement Proposal MUST be 
+published, such that it MUST enact one of the following rules:
+
+1. Introduction of a coin issuance schedule that has a fixed inflation in the long term.
+2. Introduction of a different coin issuance schedule without a fixed inflation in the long term, in which case 
+   abundant evidence of the suitability and superiority of such approach MUST be provided. 
+3. Extension of the period for enactment of rules 1 or 2 above for a maximum period of 1 year, in which case, this same 
+   rule 3 MAY be inherited by the subsequent Proposal.
+
+## Backwards compatibility
+
+### Consensus cheat sheet
+
+Upon entry into force of the proposed improvements:
+
+- Blocks and transactions that were considered valid by former versions of the protocol MUST continue to be considered
+- valid.
+- Blocks and transactions produced by non-implementers MUST be validated by implementers using the same rules as with
+- those coming from implementers, that is, the new rules.
+- Implementers MUST apply the proposed logic when assessing the right time for proposing or validating blocks, 
+  computing their own eligibility for proposing blocks or witnessing data requests, as well as any other operation 
+  related to the protocol or its implementation details that may rely on timely completion or delivery within the 
+  duration of one or more epochs or super-epoch windows.
+
+As a result:
+
+- Non-implementers MAY NOT get their blocks and transactions accepted by implementers due to mismatching epoch 
+  numbers, inappropriate timing of their protocol messages, and other reasons.
+- Implementers MAY NOT get their valid blocks accepted by non-implementers for the very same reasons.
+- Non-implementers MAY consolidate different blocks and superblocks than implementers.
+
+Due to all these points, this MUST be considered a consensus-critical protocol improvement. An adoption plan MUST be
+proposed, setting an activation date that gives miners enough time in advance to upgrade their existing clients.
+
+### Libraries, clients, and interfaces
+
+The protocol improvements proposed herein will affect any library or client implementing the core Witnet block chain
+protocol, especially the validation rules for block or superblock eligibility, as well as commitment, reveal and 
+tally transactions.
+
+Libraries, clients, interfaces, APIs, or any other software or hardware that do not validate block candidates, 
+superblock votes, commitment, reveal or tally transactions in real time may remain unaffected for the most part.
+
+## Reference Implementation
+
+TBD
+
+## Adoption Plan
+
+TBD
+
+## Acknowledgements
+
+This proposal has been cooperatively discussed and devised by many individuals from the Witnet development community.
+
+[WIP-0003]: https://github.com/witnet/WIPs/blob/master/wip-0003.md
