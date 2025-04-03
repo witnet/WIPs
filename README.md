@@ -7,35 +7,37 @@ This repository is maintained by Witnet Foundation. We are fairly liberal with a
 
 Having a WIP here does not make it a formally accepted standard until its status becomes Final or Active.
 
-| Number | Layer | Title | Owner | Type | Status |
-|:------:|:-----:|:-----------:|:----------------------------:|:-------:|:--------:|
-| [1](wip-0001.md) |  | WIP process | [Adán SDPC](https://github.com/aesedepece) | Process | Final |
-| [2](wip-0002.md) | Consensus (hard fork) | Collateralization of Witnessing Activity | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [3](wip-0003.md) | Consensus (hard fork) | WIT issuance schedule | [Daniele Levi](https://github.com/burguesia) | Standards Track | Final |
-| [4](wip-0004.md) | Consensus (hard fork) | BLS signature propagation and aggregation | [Gorka Irazoqui](https://github.com/girazoki) and [Claudia Bartoli](https://github.com/clbartoli) | Standards Track | Proposed |
-| [5](wip-0005.md) | Consensus (soft fork) | ARS merkelization | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
-| [6](wip-0006.md) | Consensus (hard fork) | Coexistence of BLS and Secp256k1 keys | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
-| [7](wip-0007.md) | Consensus (hard fork) | Block weight | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
-| [8](wip-0008.md) | Consensus (hard fork) | Limits on data request concurrency | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [9](wip-0009.md) | Consensus (hard fork) | Adjust mining probability | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
-| [10](wip-0010.md) |  | Feb 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
-| [11](wip-0011.md) | Consensus (hard fork) | Improve consistency and availability of superblock voting protocol | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [12](wip-0012.md) | Consensus (hard fork) | Set minimum mining difficulty  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [13](wip-0013.md) |  | Apr 2021 Chain Fork Post-Mortem | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
-| [14](wip-0014.md) | Consensus (hard fork) | Threshold Activation of Protocol Improvements  | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [15](wip-0015.md) | Consensus (hard fork) | Amendment to WIP-0007  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [16](wip-0016.md) | Consensus (hard fork) | Set minimum data request mining difficulty  | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [17](wip-0017.md) | Consensus (hard fork) | Add median to RADON reducers | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
-| [18](wip-0018.md) | Consensus (hard fork) | Remove message argument from UnhandledIntercept RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
-| [19](wip-0019.md) | Consensus (hard fork) | Random Number Generation (RNG) functionality | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [20](wip-0020.md) | Consensus (hard fork) | Support HTTP-POST in RADON | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
-| [21](wip-0021.md) | Consensus (hard fork) | Add StringParseXMLMap to RADON operators | [Luis Rubio](https://github.com/lrubiorod) | Standards Track | Final |
-| [22](wip-0022.md) | Consensus (hard fork) | Data request reward collateral ratio | [drcpu](https://github.com/drcpu-github) | Standards Track | Final |
-| [23](wip-0023.md) | Consensus (hard fork) | Burn slashed collateral | [drcpu](https://github.com/drcpu-github) | Standards Track | Final |
-| [24](wip-0024.md) | Consensus (hard fork) | Improved processing of numbers in oracle queries | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [25](wip-0025.md) | Consensus (hard fork) | HTTP redirects in retrievals | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
-| [26](wip-0026.md) | Consensus (hard fork) | Introduce new EncodeReveal RADON error | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
+|      Number       | Layer |                                  Title                                   | Owner | Type | Status |
+|:-----------------:|:-----:|:------------------------------------------------------------------------:|:----------------------------:|:-------:|:--------:|
+| [1](wip-0001.md)  |  |                               WIP process                                | [Adán SDPC](https://github.com/aesedepece) | Process | Final |
+| [2](wip-0002.md)  | Consensus (hard fork) |                 Collateralization of Witnessing Activity                 | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [3](wip-0003.md)  | Consensus (hard fork) |                          WIT issuance schedule                           | [Daniele Levi](https://github.com/burguesia) | Standards Track | Final |
+| [4](wip-0004.md)  | Consensus (hard fork) |                BLS signature propagation and aggregation                 | [Gorka Irazoqui](https://github.com/girazoki) and [Claudia Bartoli](https://github.com/clbartoli) | Standards Track | Proposed |
+| [5](wip-0005.md)  | Consensus (soft fork) |                            ARS merkelization                             | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
+| [6](wip-0006.md)  | Consensus (hard fork) |                  Coexistence of BLS and Secp256k1 keys                   | [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Proposed |
+| [7](wip-0007.md)  | Consensus (hard fork) |                               Block weight                               | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
+| [8](wip-0008.md)  | Consensus (hard fork) |                    Limits on data request concurrency                    | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [9](wip-0009.md)  | Consensus (hard fork) |                        Adjust mining probability                         | [Mario Cao](https://github.com/mariocao) and [Gorka Irazoqui](https://github.com/girazoki) | Standards Track | Final |
+| [10](wip-0010.md) |  |                     Feb 2021 Chain Fork Post-Mortem                      | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
+| [11](wip-0011.md) | Consensus (hard fork) |    Improve consistency and availability of superblock voting protocol    | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [12](wip-0012.md) | Consensus (hard fork) |                      Set minimum mining difficulty                       | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [13](wip-0013.md) |  |                     Apr 2021 Chain Fork Post-Mortem                      | [The witnet-rust developers](https://github.com/witnet/witnet-rust/graphs/contributors) | Informational | Final |
+| [14](wip-0014.md) | Consensus (hard fork) |              Threshold Activation of Protocol Improvements               | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [15](wip-0015.md) | Consensus (hard fork) |                          Amendment to WIP-0007                           | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
+| [16](wip-0016.md) | Consensus (hard fork) |                Set minimum data request mining difficulty                | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
+| [17](wip-0017.md) | Consensus (hard fork) |                       Add median to RADON reducers                       | [Mario Cao](https://github.com/mariocao) | Standards Track | Final |
+| [18](wip-0018.md) | Consensus (hard fork) |       Remove message argument from UnhandledIntercept RADON error        | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
+| [19](wip-0019.md) | Consensus (hard fork) |               Random Number Generation (RNG) functionality               | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [20](wip-0020.md) | Consensus (hard fork) |                        Support HTTP-POST in RADON                        | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
+| [21](wip-0021.md) | Consensus (hard fork) |                 Add StringParseXMLMap to RADON operators                 | [Luis Rubio](https://github.com/lrubiorod) | Standards Track | Final |
+| [22](wip-0022.md) | Consensus (hard fork) |                   Data request reward collateral ratio                   | [drcpu](https://github.com/drcpu-github) | Standards Track | Final |
+| [23](wip-0023.md) | Consensus (hard fork) |                         Burn slashed collateral                          | [drcpu](https://github.com/drcpu-github) | Standards Track | Final |
+| [24](wip-0024.md) | Consensus (hard fork) |             Improved processing of numbers in oracle queries             | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [25](wip-0025.md) | Consensus (hard fork) |                       HTTP redirects in retrievals                       | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [26](wip-0026.md) | Consensus (hard fork) |                  Introduce new EncodeReveal RADON error                  | [Tomasz Polaczyk](https://github.com/tmpolaczyk) | Standards Track | Final |
 | [27](wip-0027.md) | Consensus (hard fork) | Increase the age requirement for using transaction outputs as collateral | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [28](wip-0028.md) | Consensus (hard fork) |                    Proof-of-Stake consensus algorithm                    | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
+| [29](wip-0029.md) | Consensus (hard fork) |       A sustainable coin issuance schedule for the early Wit/2 era       | [Adán SDPC](https://github.com/aesedepece) | Standards Track | Final |
 
 ## TAPI signals
 
@@ -54,5 +56,15 @@ the procedure set forth by [WIP-0014]: _Threshold Activation of Protocol Improve
 | 7            | [26](wip-0026.md)                                       | `1655120`             | `In force` |
 | 8            | [27](wip-0027.md)                                       | `1655120`             | `In force` |
 
+## Protocol capabilities
+
+These are the different protocol capabilities and IDs used in the Proof-of-Stake protocol set forth by [WIP-0028]. 
+
+| **ID** | **Capability**                                      |
+|--------|-----------------------------------------------------|
+| 0      | Block proposing and superblock signing              |
+| 1      | Universal witnessing (HTTP retrievals + randomness) |
+
 [discord]: https://discord.gg/X4uurfP
 [WIP-0014]: wip-0014.md
+[WIP-0028]: wip-0028.md
